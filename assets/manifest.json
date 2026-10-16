@@ -1,0 +1,976 @@
+{
+  "version": 1,
+  "created": "2026-10-16",
+  "status": "assets complete; game integration pending",
+  "board": {
+    "width": 800,
+    "height": 1000
+  },
+  "groups": [
+    "盤面背景",
+    "筐体・外周枠",
+    "壁・レール",
+    "ボール",
+    "フリッパー",
+    "バンパー",
+    "衝突演出",
+    "UI",
+    "効果音",
+    "BGM"
+  ],
+  "assets": [
+    {
+      "id": "playfield",
+      "path": "backgrounds/playfield.png",
+      "group": 1,
+      "role": "物体を焼き込まない盤面背景",
+      "format": "png",
+      "width": 1122,
+      "height": 1402,
+      "transparent": false,
+      "source": "built-in image_gen",
+      "origin": [
+        561.0,
+        701.0
+      ],
+      "fit": "contain or cover with uniform scale; actual generated ratio retained",
+      "prompt": "backgrounds/PROMPT.md",
+      "bytes": 2934366,
+      "sha256": "e92987725bfab0cb9cf2f04c37f2ff9dee6444aaca82b9bd175ef408c525752c"
+    },
+    {
+      "id": "frame-edge",
+      "path": "frame/frame-edge.svg",
+      "group": 2,
+      "role": "筐体の上辺。回転して4辺へ使用",
+      "format": "svg",
+      "width": 64,
+      "height": 32,
+      "origin": [
+        32.0,
+        16.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "repeatAxis": "x",
+      "rotationAllowed": true,
+      "bytes": 728,
+      "sha256": "918d624141b2e9f18b40400b8e1ff737dce8b7ac1f04bebf496a1575489c769b"
+    },
+    {
+      "id": "frame-corner",
+      "path": "frame/frame-corner.svg",
+      "group": 2,
+      "role": "左上コーナー。90度単位で回転",
+      "format": "svg",
+      "width": 32,
+      "height": 32,
+      "origin": [
+        16.0,
+        16.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "rotationAllowed": true,
+      "bytes": 882,
+      "sha256": "7e5c270926c4d6f3f15a18f3300c719dd1b08fb8f6e9e2550f301ac9e38f8387"
+    },
+    {
+      "id": "rail-body",
+      "path": "rails/rail-body.svg",
+      "group": 3,
+      "role": "壁・レールの繰り返し本体",
+      "format": "svg",
+      "width": 32,
+      "height": 40,
+      "origin": [
+        16.0,
+        20.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "repeatAxis": "x",
+      "collisionRect": [
+        0,
+        0,
+        32,
+        40
+      ],
+      "bytes": 742,
+      "sha256": "4d1490df6fd002a2a0491024c408463668b411d87991028a0bcce4822f6c41d9"
+    },
+    {
+      "id": "rail-cap-left",
+      "path": "rails/rail-cap-left.svg",
+      "group": 3,
+      "role": "壁のleft端部",
+      "format": "svg",
+      "width": 24,
+      "height": 40,
+      "origin": [
+        12.0,
+        20.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionRect": [
+        0,
+        0,
+        24,
+        40
+      ],
+      "bytes": 814,
+      "sha256": "ad30defbb1738436f59198c45e3751c4e1709becc83d4cad017c38422ebcb7aa"
+    },
+    {
+      "id": "rail-cap-right",
+      "path": "rails/rail-cap-right.svg",
+      "group": 3,
+      "role": "壁のright端部",
+      "format": "svg",
+      "width": 24,
+      "height": 40,
+      "origin": [
+        12.0,
+        20.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionRect": [
+        0,
+        0,
+        24,
+        40
+      ],
+      "bytes": 861,
+      "sha256": "4db013ebd5766255a331818dc184c846c9a8c730dd2216d99756b77b78ef9fae"
+    },
+    {
+      "id": "ball-chrome",
+      "path": "ball/ball-chrome.svg",
+      "group": 4,
+      "role": "真円の金属球",
+      "format": "svg",
+      "width": 64,
+      "height": 64,
+      "origin": [
+        32.0,
+        32.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionCircle": [
+        32,
+        32,
+        30
+      ],
+      "defaultScale": 0.3333333333333333,
+      "bytes": 702,
+      "sha256": "81272c8d07d59f5d00181ec725188c826b723ea9c44b712f9237e95ca2971954"
+    },
+    {
+      "id": "ball-shadow",
+      "path": "ball/ball-shadow.svg",
+      "group": 4,
+      "role": "球の影。物理なし。球の下にオフセット配置",
+      "format": "svg",
+      "width": 96,
+      "height": 96,
+      "origin": [
+        48.0,
+        48.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "suggestedOffset": [
+        2,
+        3
+      ],
+      "defaultScale": 0.3333333333333333,
+      "bytes": 366,
+      "sha256": "c09f5feaf2d26df98624e440c0611e7185fd7d80b5b2061b7255227db279a99b"
+    },
+    {
+      "id": "flipper-left",
+      "path": "flippers/flipper-left.svg",
+      "group": 5,
+      "role": "leftフリッパー本体",
+      "format": "svg",
+      "width": 240,
+      "height": 64,
+      "origin": [
+        120.0,
+        32.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionRect": [
+        20,
+        12,
+        200,
+        40
+      ],
+      "pivot": [
+        20,
+        32
+      ],
+      "defaultScale": 0.5,
+      "aspectPolicy": "native 5:1 body only; composite or Shape fallback for other aspect ratios",
+      "bytes": 879,
+      "sha256": "970cd7ea7840ebfe65f8e1244645578c24b1813cf292b1510e0fad58877de91c"
+    },
+    {
+      "id": "flipper-right",
+      "path": "flippers/flipper-right.svg",
+      "group": 5,
+      "role": "rightフリッパー本体",
+      "format": "svg",
+      "width": 240,
+      "height": 64,
+      "origin": [
+        120.0,
+        32.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionRect": [
+        20,
+        12,
+        200,
+        40
+      ],
+      "pivot": [
+        220,
+        32
+      ],
+      "defaultScale": 0.5,
+      "aspectPolicy": "native 5:1 body only; composite or Shape fallback for other aspect ratios",
+      "bytes": 927,
+      "sha256": "3a2ad3e8f392aa3cbbe7c1f3eb580faef5f305f1039a34d16312162af4250c76"
+    },
+    {
+      "id": "flipper-pivot",
+      "path": "flippers/flipper-pivot.svg",
+      "group": 5,
+      "role": "支点キャップ。中心を物理ヒンジに合わせる。物理なし",
+      "format": "svg",
+      "width": 48,
+      "height": 48,
+      "origin": [
+        24.0,
+        24.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "defaultScale": 0.5,
+      "bytes": 786,
+      "sha256": "e4c404db2cc6cfb62f15979542c5a7c180ea499f899e2200c3356eb7aa487f30"
+    },
+    {
+      "id": "bumper-base",
+      "path": "bumpers/bumper-base.svg",
+      "group": 6,
+      "role": "バンパー台座。物理なし",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "defaultScale": 0.5,
+      "bytes": 848,
+      "sha256": "f200540741e672ed771caa170ef8bfc5b86be07feea8b88e2aa2d86695deb396"
+    },
+    {
+      "id": "bumper-normal",
+      "path": "bumpers/bumper-normal.svg",
+      "group": 6,
+      "role": "通常キャップ",
+      "format": "svg",
+      "width": 96,
+      "height": 96,
+      "origin": [
+        48.0,
+        48.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionCircle": [
+        48,
+        48,
+        40
+      ],
+      "defaultScale": 0.5,
+      "bytes": 770,
+      "sha256": "5671205a13a9ade8daba7a442fdcfca837b7bf678ef5976c7b904cd038da1f2e"
+    },
+    {
+      "id": "bumper-lit",
+      "path": "bumpers/bumper-lit.svg",
+      "group": 6,
+      "role": "点灯キャップ",
+      "format": "svg",
+      "width": 96,
+      "height": 96,
+      "origin": [
+        48.0,
+        48.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionCircle": [
+        48,
+        48,
+        40
+      ],
+      "defaultScale": 0.5,
+      "bytes": 769,
+      "sha256": "c75e6f26debe1ac0f890c152733a6c5e31ab2dc5e6f084b0d57260b193319cc5"
+    },
+    {
+      "id": "bumper-glow",
+      "path": "bumpers/bumper-glow.svg",
+      "group": 6,
+      "role": "加算合成用の発光。物理なし",
+      "format": "svg",
+      "width": 192,
+      "height": 192,
+      "origin": [
+        96.0,
+        96.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "defaultScale": 0.5,
+      "bytes": 437,
+      "sha256": "f947aba94bbcc8152eda4c97dac697543ede2354a718a8016f14f8f77bd78cf5"
+    },
+    {
+      "id": "hit-00",
+      "path": "effects/hit-00.svg",
+      "group": 7,
+      "role": "衝突演出フレーム1/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 0,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5,
+      "bytes": 1019,
+      "sha256": "904ed82d98e94d0fa9d588f395fd999b107981aca10d14cb7e54c602e0f17eb0"
+    },
+    {
+      "id": "hit-01",
+      "path": "effects/hit-01.svg",
+      "group": 7,
+      "role": "衝突演出フレーム2/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 1,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5,
+      "bytes": 1020,
+      "sha256": "10aae0a376136170de5e00a300d0900a2c6ece9e281f960c009c1eddee7165e1"
+    },
+    {
+      "id": "hit-02",
+      "path": "effects/hit-02.svg",
+      "group": 7,
+      "role": "衝突演出フレーム3/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 2,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5,
+      "bytes": 1022,
+      "sha256": "273a44e436a286e9569858ba26a688287ae3008ea11aeb8f2b0ce058d18b1ed2"
+    },
+    {
+      "id": "hit-03",
+      "path": "effects/hit-03.svg",
+      "group": 7,
+      "role": "衝突演出フレーム4/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 3,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5,
+      "bytes": 1022,
+      "sha256": "0b9b686623ece32803da1fe0a7c3f3a726d0425ce0d97a2c89d88275a30be4db"
+    },
+    {
+      "id": "hit-04",
+      "path": "effects/hit-04.svg",
+      "group": 7,
+      "role": "衝突演出フレーム5/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 4,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5,
+      "bytes": 1026,
+      "sha256": "763da076d67528bc400315b2dda92ad3a33378504f320d14d06889c1e3e14954"
+    },
+    {
+      "id": "hit-05",
+      "path": "effects/hit-05.svg",
+      "group": 7,
+      "role": "衝突演出フレーム6/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 5,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5,
+      "bytes": 1026,
+      "sha256": "e4d28f8dad81b2834448ab27cf98a50c5636f766ecec31e28a0a987fb34e7677"
+    },
+    {
+      "id": "score-panel",
+      "path": "ui/score-panel.svg",
+      "group": 8,
+      "role": "スコア表示枠。数値は別DOM",
+      "format": "svg",
+      "width": 320,
+      "height": 96,
+      "origin": [
+        160.0,
+        48.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "textSafeRect": [
+        24,
+        28,
+        272,
+        43
+      ],
+      "bytes": 968,
+      "sha256": "447fd06118feae1357c1f8ff0d0229d72a709f6df2c2cca3e180911b5aea2bc3"
+    },
+    {
+      "id": "button-normal",
+      "path": "ui/button-normal.svg",
+      "group": 8,
+      "role": "ボタンnormal。ラベルは別DOM",
+      "format": "svg",
+      "width": 160,
+      "height": 48,
+      "origin": [
+        80.0,
+        24.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "textSafeRect": [
+        12,
+        10,
+        136,
+        28
+      ],
+      "bytes": 470,
+      "sha256": "00b3dddb5790d83f14e5ac679d08f1028a0fe7fd75a7c2065e31073817598422"
+    },
+    {
+      "id": "button-pressed",
+      "path": "ui/button-pressed.svg",
+      "group": 8,
+      "role": "ボタンpressed。ラベルは別DOM",
+      "format": "svg",
+      "width": 160,
+      "height": 48,
+      "origin": [
+        80.0,
+        24.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "textSafeRect": [
+        12,
+        10,
+        136,
+        28
+      ],
+      "bytes": 470,
+      "sha256": "aebd2c4c2f409233492775f01ac923753751f38e7ccbe1402e44fb41212e0a8b"
+    },
+    {
+      "id": "button-disabled",
+      "path": "ui/button-disabled.svg",
+      "group": 8,
+      "role": "ボタンdisabled。ラベルは別DOM",
+      "format": "svg",
+      "width": 160,
+      "height": 48,
+      "origin": [
+        80.0,
+        24.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "textSafeRect": [
+        12,
+        10,
+        136,
+        28
+      ],
+      "bytes": 470,
+      "sha256": "8c187c813431dd5a0beecbdfa357affd2fab0b4c987f6a5fbccd7b9aa02e936c"
+    },
+    {
+      "id": "icon-select",
+      "path": "ui/icons/select.svg",
+      "group": 8,
+      "role": "select用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 247,
+      "sha256": "627537fffe941c80f1e76f3b9f9848c9687f1de4bfec5d4a38576a7e33101e8e"
+    },
+    {
+      "id": "icon-wall",
+      "path": "ui/icons/wall.svg",
+      "group": 8,
+      "role": "wall用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 275,
+      "sha256": "72470200ac573ed15b7dfc16b00c8f0739b64b9a66bc34b003bc8a86eeae12d3"
+    },
+    {
+      "id": "icon-bumper",
+      "path": "ui/icons/bumper.svg",
+      "group": 8,
+      "role": "bumper用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 296,
+      "sha256": "55391723c33fb252c5012d114cc2aee6b6f0809feb2a2bde00b54cbeb7619446"
+    },
+    {
+      "id": "icon-flipper",
+      "path": "ui/icons/flipper.svg",
+      "group": 8,
+      "role": "flipper用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 274,
+      "sha256": "5cd6b7dfa4fd75c2cc1c0aa87ceb6b56013141e9966db7019fdb380d4b00d879"
+    },
+    {
+      "id": "icon-ball",
+      "path": "ui/icons/ball.svg",
+      "group": 8,
+      "role": "ball用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 256,
+      "sha256": "48698851dc4badfcbee39d750a3eb6d39e4413ed56c5f11955b1ed635beb4650"
+    },
+    {
+      "id": "icon-spawn",
+      "path": "ui/icons/spawn.svg",
+      "group": 8,
+      "role": "spawn用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 265,
+      "sha256": "757050d8288b660cc9ab4e520b29f32a5a56a3803351cdc1f61c78885c011d90"
+    },
+    {
+      "id": "icon-save",
+      "path": "ui/icons/save.svg",
+      "group": 8,
+      "role": "save用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 269,
+      "sha256": "8e0fa88b00f07e09cd71388e3acbea83f846b6523b01300e63721e680a2727d6"
+    },
+    {
+      "id": "icon-load",
+      "path": "ui/icons/load.svg",
+      "group": 8,
+      "role": "load用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 261,
+      "sha256": "78482b9c241c2106609937ce774b73a97e691587334d4704c301b8b90170460a"
+    },
+    {
+      "id": "icon-delete",
+      "path": "ui/icons/delete.svg",
+      "group": 8,
+      "role": "delete用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 254,
+      "sha256": "920268926134e8b47f3cba351dbc2f5310a88dc3a3633acce1b24829e28ebd20"
+    },
+    {
+      "id": "icon-play",
+      "path": "ui/icons/play.svg",
+      "group": 8,
+      "role": "play用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 221,
+      "sha256": "cbff0a9ed5e23be2e03c11b99406604b3fcfd4c018d20712dc5c30d44111c99b"
+    },
+    {
+      "id": "icon-restart",
+      "path": "ui/icons/restart.svg",
+      "group": 8,
+      "role": "restart用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 233,
+      "sha256": "256d1e6388308428755699346c72cdf1c2049592c49e7351c1195594bcdc6e0a"
+    },
+    {
+      "id": "icon-edit",
+      "path": "ui/icons/edit.svg",
+      "group": 8,
+      "role": "edit用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 241,
+      "sha256": "ff2e4352b5d411c0b2efb09bfdbba5ce4f29147a2e535ca3550eb6a583e8daca"
+    },
+    {
+      "id": "icon-volume",
+      "path": "ui/icons/volume.svg",
+      "group": 8,
+      "role": "volume用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 268,
+      "sha256": "4f8ea5cc5634605dd09f6649a2c6eba94ac9daeb393ad8f395c14ac4db4c7863"
+    },
+    {
+      "id": "icon-mute",
+      "path": "ui/icons/mute.svg",
+      "group": 8,
+      "role": "mute用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label",
+      "bytes": 244,
+      "sha256": "39a02833f9f0d3c36f3a84447325e0a7e0e72ccba6db918b004b334d6ae7f441"
+    },
+    {
+      "id": "wall-soft",
+      "path": "audio/sfx/wall-soft.wav",
+      "group": 9,
+      "role": "弱い壁衝突",
+      "format": "wav",
+      "source": "original procedural synthesis",
+      "sampleRate": 44100,
+      "channels": 1,
+      "durationSeconds": 0.12,
+      "peakDbFS": -8.4,
+      "rmsDbFS": -24.32,
+      "bytes": 10628,
+      "sha256": "fbdbba1a6439d19f340b0d8ba2ff25b8556b3836178e2b152a64a936c19d1eab"
+    },
+    {
+      "id": "wall-hard",
+      "path": "audio/sfx/wall-hard.wav",
+      "group": 9,
+      "role": "強い壁衝突",
+      "format": "wav",
+      "source": "original procedural synthesis",
+      "sampleRate": 44100,
+      "channels": 1,
+      "durationSeconds": 0.21,
+      "peakDbFS": -4.73,
+      "rmsDbFS": -20.55,
+      "bytes": 18566,
+      "sha256": "439d0b48e75f2f2540d83267bc1a158ca9c64fb5c270fe8d29fe04486a13d530"
+    },
+    {
+      "id": "bumper",
+      "path": "audio/sfx/bumper.wav",
+      "group": 9,
+      "role": "バンパーのベル",
+      "format": "wav",
+      "source": "original procedural synthesis",
+      "sampleRate": 44100,
+      "channels": 1,
+      "durationSeconds": 0.32,
+      "peakDbFS": -4.88,
+      "rmsDbFS": -18.19,
+      "bytes": 28268,
+      "sha256": "4353f5bc4b4c8936d23ccdac3a3426b2fd74cb5f9ea9f4a8b6ea346f8c51996e"
+    },
+    {
+      "id": "flipper-up",
+      "path": "audio/sfx/flipper-up.wav",
+      "group": 9,
+      "role": "フリッパーの立上り",
+      "format": "wav",
+      "source": "original procedural synthesis",
+      "sampleRate": 44100,
+      "channels": 1,
+      "durationSeconds": 0.08501133786848072,
+      "peakDbFS": -6.02,
+      "rmsDbFS": -23.14,
+      "bytes": 7542,
+      "sha256": "480245aea37d2225c1166fcb1595d5ef5267c11cac7e0f29ab30e990f0332c52"
+    },
+    {
+      "id": "flipper-down",
+      "path": "audio/sfx/flipper-down.wav",
+      "group": 9,
+      "role": "フリッパーの戻り",
+      "format": "wav",
+      "source": "original procedural synthesis",
+      "sampleRate": 44100,
+      "channels": 1,
+      "durationSeconds": 0.07501133786848073,
+      "peakDbFS": -8.4,
+      "rmsDbFS": -24.27,
+      "bytes": 6660,
+      "sha256": "ac4c8e199fe9cafe3d1e93395ff4c4a0f30d03b8bdb120471a47449a35a2e8e4"
+    },
+    {
+      "id": "drain",
+      "path": "audio/sfx/drain.wav",
+      "group": 9,
+      "role": "落球",
+      "format": "wav",
+      "source": "original procedural synthesis",
+      "sampleRate": 44100,
+      "channels": 1,
+      "durationSeconds": 0.56,
+      "peakDbFS": -7.33,
+      "rmsDbFS": -18.02,
+      "bytes": 49436,
+      "sha256": "d69bd2a6630f40cb4fe738bb881f6a9f9825e649ead7c17441bb539870bbd353"
+    },
+    {
+      "id": "game-start",
+      "path": "audio/sfx/game-start.wav",
+      "group": 9,
+      "role": "開始",
+      "format": "wav",
+      "source": "original procedural synthesis",
+      "sampleRate": 44100,
+      "channels": 1,
+      "durationSeconds": 0.95,
+      "peakDbFS": -6.74,
+      "rmsDbFS": -18.37,
+      "bytes": 83834,
+      "sha256": "672be3283450b24448df23f4c10f54971352b9c77682aeea319eb5b734fc4404"
+    },
+    {
+      "id": "game-over",
+      "path": "audio/sfx/game-over.wav",
+      "group": 9,
+      "role": "終了",
+      "format": "wav",
+      "source": "original procedural synthesis",
+      "sampleRate": 44100,
+      "channels": 1,
+      "durationSeconds": 0.95,
+      "peakDbFS": -6.74,
+      "rmsDbFS": -18.76,
+      "bytes": 83834,
+      "sha256": "760af0e9c536cd858ff3343b0ad01417cb08c3d1cb2d7405b42bff005b28652e"
+    },
+    {
+      "id": "ui-click",
+      "path": "audio/sfx/ui-click.wav",
+      "group": 9,
+      "role": "UI決定",
+      "format": "wav",
+      "source": "original procedural synthesis",
+      "sampleRate": 44100,
+      "channels": 1,
+      "durationSeconds": 0.055011337868480725,
+      "peakDbFS": -12.04,
+      "rmsDbFS": -25.82,
+      "bytes": 4896,
+      "sha256": "2b53690e5a2d6a9b65fb16e906deb68cbdd983bb3c36567b0f4f4e5e64ced855"
+    },
+    {
+      "id": "circuit-return",
+      "path": "audio/music/circuit-return.ogg",
+      "group": 10,
+      "role": "BGM: Circuit Return",
+      "format": "ogg",
+      "source": "original composition and procedural synthesis",
+      "bpm": 112,
+      "bars": 8,
+      "timeSignature": "4/4",
+      "key": "E minor",
+      "loop": true,
+      "loopStartFrame": 0,
+      "loopEndFrame": 756000,
+      "loopPlayback": "decoded AudioBufferSourceNode.loop=true",
+      "masterWavMetrics": {
+        "sampleRate": 44100,
+        "channels": 2,
+        "durationSeconds": 17.142857142857142,
+        "peakDbFS": -4.15,
+        "rmsDbFS": -22.33
+      },
+      "bytes": 242308,
+      "sha256": "ea91ff9a55d90b1d9f05ac3d155b72d0485909b91c00d4e83dd8fb6ac95b46aa"
+    }
+  ]
+}

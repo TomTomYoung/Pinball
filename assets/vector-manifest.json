@@ -1,0 +1,710 @@
+{
+  "version": 1,
+  "palette": {
+    "steel": "#c4d2dd",
+    "dark": "#101923",
+    "blue": "#00aaff",
+    "red": "#ff343e",
+    "warm": "#ffce75"
+  },
+  "assets": [
+    {
+      "id": "frame-edge",
+      "path": "frame/frame-edge.svg",
+      "group": 2,
+      "role": "筐体の上辺。回転して4辺へ使用",
+      "format": "svg",
+      "width": 64,
+      "height": 32,
+      "origin": [
+        32.0,
+        16.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "repeatAxis": "x",
+      "rotationAllowed": true
+    },
+    {
+      "id": "frame-corner",
+      "path": "frame/frame-corner.svg",
+      "group": 2,
+      "role": "左上コーナー。90度単位で回転",
+      "format": "svg",
+      "width": 32,
+      "height": 32,
+      "origin": [
+        16.0,
+        16.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "rotationAllowed": true
+    },
+    {
+      "id": "rail-body",
+      "path": "rails/rail-body.svg",
+      "group": 3,
+      "role": "壁・レールの繰り返し本体",
+      "format": "svg",
+      "width": 32,
+      "height": 40,
+      "origin": [
+        16.0,
+        20.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "repeatAxis": "x",
+      "collisionRect": [
+        0,
+        0,
+        32,
+        40
+      ]
+    },
+    {
+      "id": "rail-cap-left",
+      "path": "rails/rail-cap-left.svg",
+      "group": 3,
+      "role": "壁のleft端部",
+      "format": "svg",
+      "width": 24,
+      "height": 40,
+      "origin": [
+        12.0,
+        20.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionRect": [
+        0,
+        0,
+        24,
+        40
+      ]
+    },
+    {
+      "id": "rail-cap-right",
+      "path": "rails/rail-cap-right.svg",
+      "group": 3,
+      "role": "壁のright端部",
+      "format": "svg",
+      "width": 24,
+      "height": 40,
+      "origin": [
+        12.0,
+        20.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionRect": [
+        0,
+        0,
+        24,
+        40
+      ]
+    },
+    {
+      "id": "ball-chrome",
+      "path": "ball/ball-chrome.svg",
+      "group": 4,
+      "role": "真円の金属球",
+      "format": "svg",
+      "width": 64,
+      "height": 64,
+      "origin": [
+        32.0,
+        32.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionCircle": [
+        32,
+        32,
+        30
+      ],
+      "defaultScale": 0.3333333333333333
+    },
+    {
+      "id": "ball-shadow",
+      "path": "ball/ball-shadow.svg",
+      "group": 4,
+      "role": "球の影。物理なし。球の下にオフセット配置",
+      "format": "svg",
+      "width": 96,
+      "height": 96,
+      "origin": [
+        48.0,
+        48.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "suggestedOffset": [
+        2,
+        3
+      ],
+      "defaultScale": 0.3333333333333333
+    },
+    {
+      "id": "flipper-left",
+      "path": "flippers/flipper-left.svg",
+      "group": 5,
+      "role": "leftフリッパー本体",
+      "format": "svg",
+      "width": 240,
+      "height": 64,
+      "origin": [
+        120.0,
+        32.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionRect": [
+        20,
+        12,
+        200,
+        40
+      ],
+      "pivot": [
+        20,
+        32
+      ],
+      "defaultScale": 0.5,
+      "aspectPolicy": "native 5:1 body only; composite or Shape fallback for other aspect ratios"
+    },
+    {
+      "id": "flipper-right",
+      "path": "flippers/flipper-right.svg",
+      "group": 5,
+      "role": "rightフリッパー本体",
+      "format": "svg",
+      "width": 240,
+      "height": 64,
+      "origin": [
+        120.0,
+        32.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionRect": [
+        20,
+        12,
+        200,
+        40
+      ],
+      "pivot": [
+        220,
+        32
+      ],
+      "defaultScale": 0.5,
+      "aspectPolicy": "native 5:1 body only; composite or Shape fallback for other aspect ratios"
+    },
+    {
+      "id": "flipper-pivot",
+      "path": "flippers/flipper-pivot.svg",
+      "group": 5,
+      "role": "支点キャップ。中心を物理ヒンジに合わせる。物理なし",
+      "format": "svg",
+      "width": 48,
+      "height": 48,
+      "origin": [
+        24.0,
+        24.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "defaultScale": 0.5
+    },
+    {
+      "id": "bumper-base",
+      "path": "bumpers/bumper-base.svg",
+      "group": 6,
+      "role": "バンパー台座。物理なし",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "defaultScale": 0.5
+    },
+    {
+      "id": "bumper-normal",
+      "path": "bumpers/bumper-normal.svg",
+      "group": 6,
+      "role": "通常キャップ",
+      "format": "svg",
+      "width": 96,
+      "height": 96,
+      "origin": [
+        48.0,
+        48.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionCircle": [
+        48,
+        48,
+        40
+      ],
+      "defaultScale": 0.5
+    },
+    {
+      "id": "bumper-lit",
+      "path": "bumpers/bumper-lit.svg",
+      "group": 6,
+      "role": "点灯キャップ",
+      "format": "svg",
+      "width": 96,
+      "height": 96,
+      "origin": [
+        48.0,
+        48.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "collisionCircle": [
+        48,
+        48,
+        40
+      ],
+      "defaultScale": 0.5
+    },
+    {
+      "id": "bumper-glow",
+      "path": "bumpers/bumper-glow.svg",
+      "group": 6,
+      "role": "加算合成用の発光。物理なし",
+      "format": "svg",
+      "width": 192,
+      "height": 192,
+      "origin": [
+        96.0,
+        96.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "defaultScale": 0.5
+    },
+    {
+      "id": "hit-00",
+      "path": "effects/hit-00.svg",
+      "group": 7,
+      "role": "衝突演出フレーム1/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 0,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5
+    },
+    {
+      "id": "hit-01",
+      "path": "effects/hit-01.svg",
+      "group": 7,
+      "role": "衝突演出フレーム2/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 1,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5
+    },
+    {
+      "id": "hit-02",
+      "path": "effects/hit-02.svg",
+      "group": 7,
+      "role": "衝突演出フレーム3/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 2,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5
+    },
+    {
+      "id": "hit-03",
+      "path": "effects/hit-03.svg",
+      "group": 7,
+      "role": "衝突演出フレーム4/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 3,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5
+    },
+    {
+      "id": "hit-04",
+      "path": "effects/hit-04.svg",
+      "group": 7,
+      "role": "衝突演出フレーム5/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 4,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5
+    },
+    {
+      "id": "hit-05",
+      "path": "effects/hit-05.svg",
+      "group": 7,
+      "role": "衝突演出フレーム6/6",
+      "format": "svg",
+      "width": 128,
+      "height": 128,
+      "origin": [
+        64.0,
+        64.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "frameIndex": 5,
+      "frameDurationMs": 30,
+      "defaultScale": 0.5
+    },
+    {
+      "id": "score-panel",
+      "path": "ui/score-panel.svg",
+      "group": 8,
+      "role": "スコア表示枠。数値は別DOM",
+      "format": "svg",
+      "width": 320,
+      "height": 96,
+      "origin": [
+        160.0,
+        48.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "textSafeRect": [
+        24,
+        28,
+        272,
+        43
+      ]
+    },
+    {
+      "id": "button-normal",
+      "path": "ui/button-normal.svg",
+      "group": 8,
+      "role": "ボタンnormal。ラベルは別DOM",
+      "format": "svg",
+      "width": 160,
+      "height": 48,
+      "origin": [
+        80.0,
+        24.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "textSafeRect": [
+        12,
+        10,
+        136,
+        28
+      ]
+    },
+    {
+      "id": "button-pressed",
+      "path": "ui/button-pressed.svg",
+      "group": 8,
+      "role": "ボタンpressed。ラベルは別DOM",
+      "format": "svg",
+      "width": 160,
+      "height": 48,
+      "origin": [
+        80.0,
+        24.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "textSafeRect": [
+        12,
+        10,
+        136,
+        28
+      ]
+    },
+    {
+      "id": "button-disabled",
+      "path": "ui/button-disabled.svg",
+      "group": 8,
+      "role": "ボタンdisabled。ラベルは別DOM",
+      "format": "svg",
+      "width": 160,
+      "height": 48,
+      "origin": [
+        80.0,
+        24.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "textSafeRect": [
+        12,
+        10,
+        136,
+        28
+      ]
+    },
+    {
+      "id": "icon-select",
+      "path": "ui/icons/select.svg",
+      "group": 8,
+      "role": "select用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-wall",
+      "path": "ui/icons/wall.svg",
+      "group": 8,
+      "role": "wall用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-bumper",
+      "path": "ui/icons/bumper.svg",
+      "group": 8,
+      "role": "bumper用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-flipper",
+      "path": "ui/icons/flipper.svg",
+      "group": 8,
+      "role": "flipper用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-ball",
+      "path": "ui/icons/ball.svg",
+      "group": 8,
+      "role": "ball用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-spawn",
+      "path": "ui/icons/spawn.svg",
+      "group": 8,
+      "role": "spawn用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-save",
+      "path": "ui/icons/save.svg",
+      "group": 8,
+      "role": "save用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-load",
+      "path": "ui/icons/load.svg",
+      "group": 8,
+      "role": "load用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-delete",
+      "path": "ui/icons/delete.svg",
+      "group": 8,
+      "role": "delete用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-play",
+      "path": "ui/icons/play.svg",
+      "group": 8,
+      "role": "play用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-restart",
+      "path": "ui/icons/restart.svg",
+      "group": 8,
+      "role": "restart用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-edit",
+      "path": "ui/icons/edit.svg",
+      "group": 8,
+      "role": "edit用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-volume",
+      "path": "ui/icons/volume.svg",
+      "group": 8,
+      "role": "volume用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    },
+    {
+      "id": "icon-mute",
+      "path": "ui/icons/mute.svg",
+      "group": 8,
+      "role": "mute用UIアイコン",
+      "format": "svg",
+      "width": 24,
+      "height": 24,
+      "origin": [
+        12.0,
+        12.0
+      ],
+      "transparent": true,
+      "source": "original vector",
+      "recolor": "change stroke or use CSS mask; keep accessible button label"
+    }
+  ]
+}

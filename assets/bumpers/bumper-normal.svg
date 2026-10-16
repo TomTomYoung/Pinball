@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="96" height="96" viewBox="0 0 96 96" fill="none">
+<defs><radialGradient id="cap" cx=".35" cy=".25" r=".8"><stop offset="0.000" stop-color="#8de5ff"/><stop offset="0.333" stop-color="#2cc4ff"/><stop offset="0.667" stop-color="#008cda"/><stop offset="1.000" stop-color="#03477c"/></radialGradient></defs><circle cx="48" cy="48" r="40" fill="url(#cap)"/><circle cx="48" cy="48" r="35" stroke="#81d9ff" stroke-width="2"/><circle cx="48" cy="48" r="27" fill="#03477c" fill-opacity=".17"/><path d="M21 41a28 28 0 0 1 33-20" stroke="#fff" stroke-opacity=".45" stroke-width="3" stroke-linecap="round"/><circle cx="48" cy="48" r="7" fill="#d3f3ff"/><path d="M48 29v6m0 26v6M29 48h6m26 0h6" stroke="#dcf8ff" stroke-width="2"/>
+</svg>

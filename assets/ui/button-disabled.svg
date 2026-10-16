@@ -1,0 +1,3 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="48" viewBox="0 0 160 48" fill="none">
+<defs><linearGradient id="button" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#28323c"/><stop offset="1" stop-color="#1c2731"/></linearGradient></defs><rect x="1" y="1" width="158" height="46" rx="8" fill="#080f16"/><rect x="2" y="2" width="156" height="44" rx="7" fill="url(#button)" stroke="#53616d"/><path d="M12 5h136" stroke="#53616d" stroke-opacity=".55"/>
+</svg>

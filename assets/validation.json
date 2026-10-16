@@ -1,0 +1,180 @@
+{
+  "date": "2026-10-16",
+  "browser": "153.0.8010.0",
+  "checks": [
+    "49 unique IDs and matching SHA-256 files",
+    "39 images decoded in file:// preview",
+    "SVG files self-contained",
+    "no automatic audio playback",
+    "hit animation, score reset, mute and stop controls",
+    "10 audio files decoded in Chromium",
+    "PCM peaks below clipping",
+    "WAV envelope endpoints near zero",
+    "music loop length and boundary continuity",
+    "mobile 390px layout without overflow",
+    "pageerror=0; requestfailed=0"
+  ],
+  "audio": [
+    {
+      "path": "audio/sfx/wall-soft.wav",
+      "duration": 0.12,
+      "frames": 5292,
+      "sampleRate": 44100,
+      "channels": 1,
+      "peak": 0.3799859583377838,
+      "rms": 0.06084681554436895,
+      "first": 0,
+      "last": 0,
+      "maxStep": 0.09881652146577835,
+      "seamStep": 0,
+      "seamSteps": [
+        0
+      ]
+    },
+    {
+      "path": "audio/sfx/wall-hard.wav",
+      "duration": 0.21,
+      "frames": 9261,
+      "sampleRate": 44100,
+      "channels": 1,
+      "peak": 0.579986572265625,
+      "rms": 0.09391092304912504,
+      "first": 0,
+      "last": 0,
+      "maxStep": 0.20484023168683052,
+      "seamStep": 0,
+      "seamSteps": [
+        0
+      ]
+    },
+    {
+      "path": "audio/sfx/bumper.wav",
+      "duration": 0.32,
+      "frames": 14112,
+      "sampleRate": 44100,
+      "channels": 1,
+      "peak": 0.5699942111968994,
+      "rms": 0.12321362286957833,
+      "first": 0,
+      "last": 0,
+      "maxStep": 0.13601861894130707,
+      "seamStep": 0,
+      "seamSteps": [
+        0
+      ]
+    },
+    {
+      "path": "audio/sfx/flipper-up.wav",
+      "duration": 0.08501133786848072,
+      "frames": 3749,
+      "sampleRate": 44100,
+      "channels": 1,
+      "peak": 0.5,
+      "rms": 0.06963325454245978,
+      "first": 0,
+      "last": 0,
+      "maxStep": 0.3529142737388611,
+      "seamStep": 0,
+      "seamSteps": [
+        0
+      ]
+    },
+    {
+      "path": "audio/sfx/flipper-down.wav",
+      "duration": 0.07501133786848073,
+      "frames": 3308,
+      "sampleRate": 44100,
+      "channels": 1,
+      "peak": 0.379974365234375,
+      "rms": 0.061142518347177814,
+      "first": 0,
+      "last": 0,
+      "maxStep": 0.2537606209516525,
+      "seamStep": 0,
+      "seamSteps": [
+        0
+      ]
+    },
+    {
+      "path": "audio/sfx/drain.wav",
+      "duration": 0.56,
+      "frames": 24696,
+      "sampleRate": 44100,
+      "channels": 1,
+      "peak": 0.4300057888031006,
+      "rms": 0.12567264166617234,
+      "first": 0,
+      "last": 0.00006103701889514923,
+      "maxStep": 0.02337673120200634,
+      "seamStep": 0.00006103701889514923,
+      "seamSteps": [
+        0.00006103701889514923
+      ]
+    },
+    {
+      "path": "audio/sfx/game-start.wav",
+      "duration": 0.95,
+      "frames": 41895,
+      "sampleRate": 44100,
+      "channels": 1,
+      "peak": 0.4600054919719696,
+      "rms": 0.12062272178932477,
+      "first": 0,
+      "last": 0,
+      "maxStep": 0.056640625,
+      "seamStep": 0,
+      "seamSteps": [
+        0
+      ]
+    },
+    {
+      "path": "audio/sfx/game-over.wav",
+      "duration": 0.95,
+      "frames": 41895,
+      "sampleRate": 44100,
+      "channels": 1,
+      "peak": 0.459991455078125,
+      "rms": 0.11537481808761103,
+      "first": 0,
+      "last": 0,
+      "maxStep": 0.0379948653280735,
+      "seamStep": 0,
+      "seamSteps": [
+        0
+      ]
+    },
+    {
+      "path": "audio/sfx/ui-click.wav",
+      "duration": 0.055011337868480725,
+      "frames": 2426,
+      "sampleRate": 44100,
+      "channels": 1,
+      "peak": 0.25000762939453125,
+      "rms": 0.05114032182399772,
+      "first": 0,
+      "last": 0,
+      "maxStep": 0.07977379485964775,
+      "seamStep": 0,
+      "seamSteps": [
+        0
+      ]
+    },
+    {
+      "path": "audio/music/circuit-return.ogg",
+      "duration": 17.142857142857142,
+      "frames": 756000,
+      "sampleRate": 44100,
+      "channels": 2,
+      "peak": 0.6132694482803345,
+      "rms": 0.07675860306551673,
+      "first": 0.008917968720197678,
+      "last": 0.010557794943451881,
+      "maxStep": 0.1141466349363327,
+      "seamStep": 0.00033595599234104156,
+      "seamSteps": [
+        0.00033595599234104156,
+        0.0016398262232542038
+      ]
+    }
+  ]
+}

@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pinball — Asset Studio</title>
+<style>
+:root{color-scheme:dark;--ink:#e3eef7;--muted:#a8b9c9;--line:#2a4054;--accent:#72cfff}
+*{box-sizing:border-box}body{margin:0;background:#0b131d;color:var(--ink);font-family:system-ui,sans-serif;line-height:1.6}
+header,main,footer{max-width:1440px;margin:auto;padding:28px 36px}header{display:flex;align-items:center;justify-content:space-between;gap:24px;border-bottom:1px solid var(--line)}
+.eyebrow{color:var(--accent);font-size:11px;font-weight:700;letter-spacing:.22em;margin:0 0 5px}h1{font-size:32px;line-height:1.2;margin:0}h2{font-size:19px;margin:0 0 16px}h3{font-size:15px;margin:0}.muted,small{color:var(--muted)}p{margin:8px 0 16px}.tag{padding:6px 12px;border:1px solid var(--line);border-radius:20px;white-space:nowrap;font:12px ui-monospace,monospace}
+a{color:var(--accent)}button{font:inherit;color:var(--ink);background:#1c3449;border:1px solid #47627b;border-radius:7px;padding:9px 13px;cursor:pointer}button:hover{background:#2a4e69}button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid #91d9ff;outline-offset:3px}button:disabled{opacity:.5;cursor:wait}
+.overview{display:grid;grid-template-columns:minmax(300px,1fr) minmax(340px,1fr);gap:32px}.preview{padding:18px;background:#071019;border:1px solid var(--line);border-radius:14px;align-self:start}.preview canvas{display:block;width:100%;height:auto}.preview-tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:16px}label{font-size:13px}input[type=checkbox]{accent-color:#00aaff}.lede{font-size:14px;margin-bottom:22px}.count{color:#fff;font-size:34px;font-weight:650;letter-spacing:-.04em}.stats{display:flex;gap:32px;padding:16px 0 22px;border-bottom:1px solid var(--line);margin-bottom:24px}.stats span{display:block;font-size:12px;color:var(--muted)}.swatches{display:flex;gap:6px;margin:16px 0 24px}.swatches i{width:42px;height:8px;border-radius:4px}.notes{padding:16px 20px;border-left:2px solid #00aaff;background:#112233;font-size:13px}.notes p:last-child{margin-bottom:0}
+.score{position:relative;width:320px;max-width:100%;aspect-ratio:10/3;background:url(ui/score-panel.svg) center/contain no-repeat;display:grid;align-content:center;padding:20px 28px}.score small{font-size:9px;letter-spacing:.22em;color:#89b4d2}.score strong{font:30px ui-monospace,monospace;letter-spacing:.12em;line-height:1.1}.ui-samples{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:20px 0}.sample-button{width:160px;height:48px;background:url(ui/button-normal.svg) center/contain no-repeat;border:0;padding:0;font-size:13px}.sample-button:hover{background:url(ui/button-normal.svg) center/contain no-repeat;filter:brightness(1.15)}.sample-button:active{background-image:url(ui/button-pressed.svg)}.sample-button img{width:18px;height:18px;vertical-align:middle;margin-right:7px}.status{min-height:24px;font-size:12px;color:#ffda94}
+.catalog-section{margin-top:34px;padding-top:25px;border-top:1px solid var(--line)}.section-title{display:flex;justify-content:space-between;gap:12px;align-items:baseline}.section-title a{font-size:12px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}.asset{min-width:0;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:#111f2d}.art{height:116px;padding:15px;display:flex;align-items:center;justify-content:center;background-color:#172737;background-image:linear-gradient(45deg,#213246 25%,transparent 25%),linear-gradient(-45deg,#213246 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#213246 75%),linear-gradient(-45deg,transparent 75%,#213246 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}.art img{max-width:100%;max-height:100%;object-fit:contain}.asset-info{padding:10px 12px}.asset-info a{font:11px ui-monospace,monospace;overflow-wrap:anywhere}.asset-info small{display:block;font-size:10px;margin-top:3px}.audio-controls{display:flex;gap:22px;align-items:center;flex-wrap:wrap;padding:15px 0}.audio-controls label{display:grid;gap:3px}input[type=range]{accent-color:#00aaff;width:160px}.sound-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}.sound{display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:8px;padding:12px}.sound button{text-align:left;font-size:12px}.sound small{font-size:11px}.music{margin-top:20px;padding:20px;border-radius:10px;background:#142637;border:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:20px}.music audio{max-width:100%;width:330px}footer{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:28px}
+@media(max-width:800px){header,main,footer{padding:22px 18px}.overview{grid-template-columns:1fr}h1{font-size:27px}.music{align-items:start;flex-direction:column}.grid{grid-template-columns:repeat(2,minmax(0,1fr))}header .tag{font-size:10px}.stats{gap:26px}}
+</style>
+<header><div><p class="eyebrow">PINBALL / MATERIAL COLLECTION 01</p><h1>Asset Studio</h1></div><span class="tag">2026.10.16 · v1</span></header>
+<main>
+<section class="overview">
+  <div class="preview"><canvas id="board" width="864" height="1064" aria-label="素材を組み合わせた盤面の見本。ゲームではありません。"></canvas><div class="preview-tools"><button id="hit" disabled>Hit preview</button><label><input type="checkbox" id="guides"> Collider guides</label></div><p class="status" id="status" role="status" aria-live="polite"></p></div>
+  <div><p class="eyebrow">01—10 / COMPLETE ASSET SET</p><h2>素材の組み合わせと個別確認</h2><p class="lede muted">背景、金属部品、可動部品、UI、音を分離した素材集です。左は配置例です。ゲームへの組込みは次の工程です。</p><div class="stats"><div><b class="count" id="total">49</b><span>MEDIA FILES</span></div><div><b class="count">10</b><span>CATEGORIES</span></div><div><b class="count">800 × 1000</b><span>BOARD UNITS</span></div></div>
+  <div class="swatches" aria-label="銀・青・赤・黄の配色"><i style="background:#c4d2dd"></i><i style="background:#00aaff"></i><i style="background:#ff343e"></i><i style="background:#ffce75"></i></div>
+  <div class="score"><small>SCORE / LIVE TEXT</small><strong id="score">000000</strong></div><div class="ui-samples"><button class="sample-button" id="sample-hit"><img src="ui/icons/play.svg" alt="">Hit +50</button><button class="sample-button" id="sample-reset"><img src="ui/icons/restart.svg" alt="">Reset</button></div>
+  <div class="notes"><p><strong>寸法を崩さない構成</strong><br>枠とレールは端部＋反復部品。円は同比率で拡縮し、フリッパーは端の支点を基準に回転します。</p><p>黄色のガイドで部品と当たり判定の位置を確認できます。支点キャップ・台座・影・発光には当たり判定を付けません。</p></div>
+  <p class="muted" style="font-size:12px;margin-top:20px">画像・SVGをクリックすると元ファイルを開きます。音は操作後にだけ再生します。<a href="README.md">使用方法</a> · <a href="manifest.json">素材台帳</a> · <a href="../doc/HANDOFF.md">ハンドオフ</a></p>
+  </div>
+</section>
+<div id="visuals"></div>
+<section class="catalog-section"><p class="eyebrow">09 / SOUND EFFECTS</p><h2>短い機械音と通知音</h2><div class="audio-controls"><label>SFX volume<input id="sfx-volume" type="range" min="0" max="1" step=".01" value=".65"></label><label>Music volume<input id="music-volume" type="range" min="0" max="1" step=".01" value=".25"></label><label><input id="mute" type="checkbox"> Mute all</label><button id="stop-audio">Stop all</button></div><div id="sounds" class="sound-list"></div>
+<div class="music"><div><p class="eyebrow">10 / ORIGINAL LOOP</p><h3>Circuit Return</h3><small>112 BPM · E minor · 8 bars · 17.143 sec</small><br><a href="audio/music/circuit-return.ogg">Ogg file</a></div><audio id="music" controls loop preload="metadata" src="audio/music/circuit-return.ogg" aria-label="BGM Circuit Return"></audio></div><p class="status" id="audio-status" role="status" aria-live="polite"></p></section>
+</main><footer>Pinball asset set v1 · Background: image generation / Parts: original SVG / Audio: original synthesis and composition. <a href="../index.html">ゲームを開く</a></footer>
+<script src="catalog.js"></script>
+<script>
+'use strict';
+const catalog=window.PINBALL_ASSETS, byId=new Map(catalog.assets.map(a=>[a.id,a]));
+const $=id=>document.getElementById(id); $('total').textContent=catalog.assets.length;
+for(let group=1;group<=8;group++){
+ const section=document.createElement('section');section.className='catalog-section';
+ const title=document.createElement('h2');title.textContent=String(group).padStart(2,'0')+' / '+catalog.groups[group-1];section.append(title);
+ const grid=document.createElement('div');grid.className='grid';section.append(grid);
+ for(const asset of catalog.assets.filter(a=>a.group===group)){
+  const card=document.createElement('article');card.className='asset';
+  const link=document.createElement('a');link.href=asset.path;link.className='art';link.setAttribute('aria-label',asset.role);
+  const img=new Image();img.src=asset.path;img.alt=asset.role;img.loading='lazy';link.append(img);
+  const info=document.createElement('div');info.className='asset-info';const name=document.createElement('a');name.href=asset.path;name.textContent=asset.path.split('/').pop();
+  const detail=document.createElement('small');detail.textContent=asset.width+' × '+asset.height+' · '+asset.format.toUpperCase();info.append(name,detail);card.append(link,info);grid.append(card);
+ }
+ $('visuals').append(section);
+}
+const active=new Set(),music=$('music');music.volume=Number($('music-volume').value);
+function updateVolumes(){music.volume=Number($('music-volume').value);music.muted=$('mute').checked;for(const a of active){a.volume=Number($('sfx-volume').value);a.muted=$('mute').checked;}}
+async function playSound(id){const a=new Audio(byId.get(id).path);a.volume=Number($('sfx-volume').value);a.muted=$('mute').checked;active.add(a);a.onended=()=>active.delete(a);a.onerror=()=>{active.delete(a);$('audio-status').textContent='音声を読み込めません: '+id;};try{await a.play();$('audio-status').textContent=byId.get(id).role;}catch(error){active.delete(a);$('audio-status').textContent='音声の再生に失敗しました: '+error.message;}}
+for(const a of catalog.assets.filter(a=>a.group===9)){const box=document.createElement('div');box.className='sound';const button=document.createElement('button');button.textContent='▶ '+a.id;button.onclick=()=>playSound(a.id);const label=document.createElement('small');label.textContent=a.role+' · '+a.durationSeconds.toFixed(3)+'s';const link=document.createElement('a');link.href=a.path;link.textContent='WAV';link.style.fontSize='11px';box.append(button,label,link);$('sounds').append(box);}
+for(const id of ['sfx-volume','music-volume','mute'])$(id).addEventListener('input',updateVolumes);
+$('stop-audio').onclick=()=>{for(const a of active){a.pause();a.currentTime=0;}active.clear();music.pause();music.currentTime=0;$('audio-status').textContent='停止しました';};
+music.addEventListener('error',()=>{$('audio-status').textContent='BGMを読み込めません。Ogg対応ブラウザで確認してください。';});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)$('stop-audio').click();});
+const canvas=$('board'),ctx=canvas.getContext('2d'),images=new Map();let ready=false,hitStart=-Infinity,animation=0,score=0;
+function image(id,x,y,w,h){ctx.drawImage(images.get(id),x,y,w,h);}
+function tile(id,x,y,w,h,nativeW,nativeH){ctx.save();ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();for(let i=0;i<w;i+=nativeW)for(let j=0;j<h;j+=nativeH)image(id,x+i,y+j,nativeW,nativeH);ctx.restore();}
+function guides(rect){if(!$('guides').checked)return;ctx.strokeStyle='#ffd677';ctx.lineWidth=1.5;ctx.setLineDash([4,3]);ctx.strokeRect(...rect);ctx.setLineDash([]);}
+function rail(x,y,length,angle=0){ctx.save();ctx.translate(x,y);ctx.rotate(angle*Math.PI/180);image('rail-cap-left',0,-10,12,20);tile('rail-body',12,-10,length-24,20,16,20);image('rail-cap-right',length-12,-10,12,20);guides([0,-10,length,20]);ctx.restore();}
+function flipper(x,y,right,angle){const id=right?'flipper-right':'flipper-left',a=byId.get(id),scale=.5;ctx.save();ctx.translate(x,y);ctx.rotate(angle*Math.PI/180);image(id,-a.pivot[0]*scale,-a.pivot[1]*scale,a.width*scale,a.height*scale);image('flipper-pivot',-12,-12,24,24);guides([(20-a.pivot[0])*scale,-10,100,20]);if($('guides').checked){ctx.fillStyle='#ffd677';ctx.beginPath();ctx.arc(0,0,3,0,Math.PI*2);ctx.fill();}ctx.restore();}
+const bumperPositions=[[290,290],[510,290],[400,430]];
+function draw(time=performance.now()){
+ if(!ready)return;const elapsed=time-hitStart;ctx.clearRect(0,0,864,1064);ctx.fillStyle='#0d1722';ctx.fillRect(0,0,864,1064);
+ ctx.save();ctx.translate(32,32);const bg=byId.get('playfield'),s=Math.max(800/bg.width,1000/bg.height);ctx.save();ctx.beginPath();ctx.rect(0,0,800,1000);ctx.clip();image('playfield',(800-bg.width*s)/2,(1000-bg.height*s)/2,bg.width*s,bg.height*s);ctx.restore();
+ rail(36,130,720,90);rail(764,130,720,90);rail(165,128,470);rail(170,560,150,53);rail(630,560,150,127);rail(188,827,145,26);rail(612,827,145,154);
+ for(let i=0;i<bumperPositions.length;i++){const [x,y]=bumperPositions[i],lit=i===2&&elapsed<100;image('bumper-base',x-44.8,y-44.8,89.6,89.6);if(lit)image('bumper-glow',x-67.2,y-67.2,134.4,134.4);image(lit?'bumper-lit':'bumper-normal',x-33.6,y-33.6,67.2,67.2);if($('guides').checked){ctx.strokeStyle='#ffd677';ctx.beginPath();ctx.arc(x,y,28,0,Math.PI*2);ctx.stroke();}}
+ flipper(300,880,false,18);flipper(500,880,true,-18);image('ball-shadow',419-16,657-16,32,32);image('ball-chrome',417-64/6,654-64/6,64/3,64/3);if($('guides').checked){ctx.strokeStyle='#ffd677';ctx.beginPath();ctx.arc(417,654,10,0,Math.PI*2);ctx.stroke();}
+ if(elapsed>=0&&elapsed<180)image('hit-'+String(Math.floor(elapsed/30)).padStart(2,'0'),400-64,430-64,128,128);
+ ctx.restore();
+ for(let side=0;side<4;side++){ctx.save();if(side===1){ctx.translate(864,0);ctx.rotate(Math.PI/2);}if(side===2){ctx.translate(864,1064);ctx.rotate(Math.PI);}if(side===3){ctx.translate(0,1064);ctx.rotate(-Math.PI/2);}const length=side%2?1064:864;image('frame-corner',0,0,32,32);tile('frame-edge',32,0,length-64,32,64,32);ctx.restore();}
+ if(elapsed<180)animation=requestAnimationFrame(draw);
+}
+function hit(){if(!ready)return;cancelAnimationFrame(animation);hitStart=performance.now();score+=50;$('score').textContent=String(score).padStart(6,'0');draw();playSound('bumper');}
+$('hit').onclick=hit;$('sample-hit').onclick=hit;$('sample-reset').onclick=()=>{score=0;$('score').textContent='000000';};$('guides').onchange=()=>draw();
+Promise.all(catalog.assets.filter(a=>a.group<=8).map(a=>new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>{images.set(a.id,img);resolve();};img.onerror=()=>reject(new Error(a.path));img.src=a.path;}))).then(()=>{ready=true;draw();$('hit').disabled=false;$('status').textContent='素材の配置例 / Sample assembly';window.assetPreviewReady=true;}).catch(error=>{$('status').textContent='画像を読み込めません: '+error.message;});
+</script>
+</html>

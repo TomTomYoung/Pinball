@@ -7,6 +7,8 @@
 
 HTML・CSS・JavaScriptは[index.html](../index.html)に同梱しています。実行時の外部依存はCDNから読むPhaser 3.60.0のみです。物理は同梱Matter、重力はy=1、debug=false、描画はPhaser.AUTOです。画像・音声・バックエンド・ビルドは不要です。
 
+別途、組込み前の画像・SVG・音声49点を`assets/`に用意しています。素材の仕様は[assets/README.md](../assets/README.md)、寸法・支点は[manifest.json](../assets/manifest.json)を参照してください。`assets/index.html`は素材確認専用で、本体の描画・音声・保存動作はまだ変更していません。
+
 主な責務は次のとおりです。
 
 - `LayoutCodec`: 保存データ・編集入力の検証と正規化、旧外周壁の候補判定。

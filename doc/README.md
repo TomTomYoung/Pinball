@@ -15,6 +15,7 @@ Phaser 3.60.0とMatterを使う、単一HTMLのピンボール盤面エディタ
 1. [SPECIFICATION.md](./SPECIFICATION.md): 現行の操作、物理、保存形式、旧データの移行。
 2. [STATUS.md](./STATUS.md): 修正した問題、検証結果、残る課題。
 3. [HANDOFF.md](./HANDOFF.md): 開発時の注意、確認手順、次の作業。
+4. [素材README](../assets/README.md): 作成済み49点の画像・部品・UI・音声と組込み条件。[素材確認ページ](../assets/index.html)は取得後に直接開けます。
 
 修正前の文書は[history/2026-10-16-before-fix](./history/2026-10-16-before-fix/README.md)に原文のまま保存しています。過去の不具合・未検証の記載は当時の記録です。現在の仕様判断には上記3文書を使用してください。
 
