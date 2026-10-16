@@ -24,6 +24,7 @@ async function pageFor(t, viewport = { width: 1280, height: 900 }) {
     t.after(async () => { await context.close(); assert.deepEqual(errors, [], 'ブラウザ例外がないこと'); });
     await page.goto(url);
     await page.waitForFunction(() => typeof pinballGame !== 'undefined' && pinballGame.mode === 'edit');
+    await page.click('#gallery-edit-button');
     return page;
 }
 async function edit(page, name, value) {
@@ -58,7 +59,7 @@ test('全種の保存・再読込で形状・値と盤面サイズが保持さ�
     const before = await layout(page);
     await page.click('#save-button');
     assert.equal(await page.evaluate(() => JSON.parse(localStorage.getItem('pinballLayout')).objects.length), 5);
-    await page.reload(); await page.waitForFunction(() => pinballGame.mode === 'edit'); await page.click('#load-button');
+    await page.reload(); await page.waitForFunction(() => pinballGame.mode === 'edit'); await page.click('#gallery-edit-button'); await page.click('#load-button');
     assert.deepEqual(await layout(page), before);
     assert.equal(await page.evaluate(() => pinballGame.editor.objects.length), 8);
     assert.equal(await page.evaluate(() => pinballGame.editor.objects.find(o => o.type === 'ball').gameObject.body), null);
@@ -167,6 +168,7 @@ test('HTMLを直接開いても追加・保存・読込ができる', async t =>
     const page = await pageFor(t);
     await page.goto(require('node:url').pathToFileURL(path.resolve(__dirname, '../index.html')).href);
     await page.waitForFunction(() => typeof pinballGame !== 'undefined' && pinballGame.mode === 'edit');
+    await page.click('#gallery-edit-button');
     await page.click('#add-bumper-button'); await edit(page, 'radius', 28);
     const before = await layout(page); await page.click('#save-button');
     await page.click('#delete-object-button'); await page.click('#load-button');

@@ -4,9 +4,10 @@
   "version": "0.1.0",
   "scripts": {
     "build": "python tools/build-game.py",
-    "test": "node --test tests/engine.test.cjs",
+    "test": "node --test tests/engine.test.cjs tests/tables.test.cjs",
     "test:browser": "node --test tests/browser.test.cjs",
-    "test:media": "node --test tests/media.test.cjs"
+    "test:media": "node --test tests/media.test.cjs",
+    "test:arcade": "node --test tests/arcade.test.cjs"
   },
   "devDependencies": {
     "phaser": "3.60.0",

@@ -235,7 +235,7 @@ class SceneSkin {
         const go = object.gameObject; if (!go || !view.container.scene) return;
         view.container.setPosition(go.x, go.y).setRotation(object.type === 'ball' ? 0 : go.rotation).setAlpha(object.isBallPositionMarker ? .5 : 1);
         if (view.cap) {
-            const lit = (view.flashUntil ?? 0) > this.scene.time.now;
+            const lit = object.collected || (view.flashUntil ?? 0) > this.scene.time.now;
             view.cap.setTexture(this.media.key(lit ? 'bumper-lit' : 'bumper-normal')); view.glow.setVisible(lit);
         }
     }

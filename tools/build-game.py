@@ -16,9 +16,12 @@ for asset in manifest['assets']:
     pack[asset['id']]={**asset,'url':'data:'+mimes[asset['format']]+';base64,'+base64.b64encode(data).decode()}
 template=(ROOT/'src/index.template.html').read_text()
 runtime=(ROOT/'src/media.js').read_text()
+tables=(ROOT/'src/tables.js').read_text()
 assert template.count('__PINBALL_ASSET_PACK__')==1
 assert template.count('/* PINBALL_MEDIA_RUNTIME */')==1
+assert template.count('/* PINBALL_TABLES_RUNTIME */')==1
 html=template.replace('__PINBALL_ASSET_PACK__',json.dumps(pack,ensure_ascii=False,separators=(',',':')).replace('<','\\u003c'))
 html=html.replace('/* PINBALL_MEDIA_RUNTIME */',runtime)
+html=html.replace('/* PINBALL_TABLES_RUNTIME */',tables)
 (ROOT/'index.html').write_text(html)
 print(f'Built index.html: {len(pack)} embedded media files, {len(html.encode()):,} bytes.')

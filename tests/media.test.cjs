@@ -22,6 +22,7 @@ async function open(t,init=null,viewport={width:1280,height:900}){
     t.after(async()=>{await context.close();assert.deepEqual(errors,[]);assert(requests.every(u=>u===url||u.startsWith('data:')||u==='https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js'),'No sidecar assets or network dependency other than Phaser');});
     if(init)await page.addInitScript(init);
     await page.goto(url);await page.waitForFunction(()=>typeof pinballGame!=='undefined'&&pinballGame.mode==='edit');
+    await page.evaluate(() => pinballGame.closeGallery());
     return page;
 }
 async function fixture(page){

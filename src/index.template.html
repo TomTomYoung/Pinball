@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ピンボールゲームエディター</title>
+    <title>PINBALL ARCADE — 10の台とエディター</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
     <style>
         body {
@@ -139,20 +139,72 @@
         .audio-options input { display: block; width: 100%; accent-color: #00aaff; }
         #score-display { display: none; position: absolute; top: 8px; left: 8px; width: min(240px, 45%); aspect-ratio: 10 / 3; background-position: center; background-repeat: no-repeat; background-size: contain; z-index: 5; pointer-events: none; }
         #score-display span { position: absolute; inset: 26% 10% 10%; display: flex; align-items: center; font: clamp(14px, 2vw, 23px) monospace; color: #e3f4ff; }
+        [hidden] { display: none !important; }
+        button:focus-visible { outline: 3px solid #7de5ff; outline-offset: 3px; }
+        #table-gallery { position: fixed; inset: 0; z-index: 300; overflow: auto; padding: 36px clamp(16px, 4vw, 60px); box-sizing: border-box; background: radial-gradient(ellipse at 85% 0%, #16324a, transparent 60%), #0b1320; }
+        .gallery-header { display: flex; gap: 24px; justify-content: space-between; align-items: center; max-width: 1440px; margin: auto; }
+        .eyebrow { color: #79d5f8; letter-spacing: .2em; font: 12px monospace; }
+        .gallery-header h1 { margin: 8px 0; font-size: clamp(28px, 4vw, 48px); letter-spacing: .04em; }
+        .gallery-header p, #gallery-note { color: #aebed0; line-height: 1.6; }
+        #gallery-note { max-width: 1440px; margin: 22px auto; font-size: 14px; }
+        #table-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 18px; max-width: 1440px; margin: auto; }
+        .table-card { display: flex; gap: 16px; min-height: 238px; padding: 18px; border: 1px solid #2d3e52; border-radius: 12px; background: #131f2e; box-shadow: 0 6px 24px #0003; }
+        .table-card:hover { border-color: var(--table-accent); }
+        .table-preview { width: 36%; flex-shrink: 0; align-self: center; }
+        .table-preview svg { display: block; width: 100%; background: #0b1421; border-radius: 8px; }
+        .table-copy { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+        .table-number { font: 12px monospace; color: var(--table-accent); }
+        .table-copy h2 { font-size: 18px; margin: 10px 0; line-height: 1.4; }
+        .table-copy p { font-size: 13px; color: #b6c5d7; line-height: 1.65; margin: 0 0 14px; }
+        .table-record { font: 11px monospace; color: #b8ccdf; margin: auto 0 12px; line-height: 1.7; }
+        .table-copy button { background: var(--table-accent); color: #07131e; font-weight: bold; text-align: left; margin: 0; padding: 12px; }
+        .table-copy button span { float: right; }
+        #table-info { position: absolute; top: 85px; left: 10px; right: 10px; z-index: 5; color: #dceefe; pointer-events: none; text-shadow: 0 2px 3px #000; font-size: 13px; }
+        #table-name { font-weight: bold; margin-bottom: 5px; }
+        #play-controls { position: absolute; bottom: 10px; left: 10px; right: 10px; z-index: 10; display: flex; justify-content: space-between; gap: 8px; }
+        #play-controls button { touch-action: none; user-select: none; margin: 0; min-height: 48px; border: 1px solid #5d7692; background: #102237ed; }
+        #play-controls .flipper-control { width: 24%; font-size: 18px; }
+        #play-controls .pressed { background: #285a7d; }
+        #launch-prompt { position: absolute; inset: 43% 12% auto; z-index: 7; padding: 18px; text-align: center; border: 1px solid #60c6ed; border-radius: 10px; background: #0d1c2ef0; pointer-events: none; line-height: 1.7; }
+        #arcade-details { padding: 24px; line-height: 1.8; color: #c5d6e8; }
+        #arcade-details h2 { color: #fff; }
+        #round-result { max-width: 85%; text-align: center; line-height: 1.6; }
+        body.arcade-playing #phaser-container { width: 76%; }
+        body.arcade-playing #properties-panel { width: 24%; }
         @media (max-width: 720px) {
             #game-container { flex-direction: column; }
             #phaser-container { width: 100%; height: 60%; }
             #properties-panel { width: 100%; height: 40%; }
             #control-panel { gap: 5px; }
             #control-panel button { padding: 6px 10px; }
+            .gallery-header { align-items: flex-start; flex-direction: column; gap: 8px; }
+            #table-gallery { padding-top: 24px; }
+            #table-grid { grid-template-columns: 1fr; }
+            .table-card { min-height: 210px; }
+            body.arcade-playing #phaser-container { width: 100%; height: 100%; }
+            body.arcade-playing #properties-panel { display: none; }
+            #play-controls { gap: 4px; }
+            #play-controls button { padding: 8px; }
+            #score-display { width: 180px; }
+            #table-info { top: 64px; font-size: 11px; }
         }
     </style>
 </head>
 <body>
+    <section id="table-gallery" aria-label="ピンボール台を選ぶ">
+        <header class="gallery-header"><div><div class="eyebrow">TEN TABLES / THREE BALLS</div>
+            <h1>PINBALL ARCADE</h1><p>10の台、10の跳ね方。好きな台から始めましょう。</p></div>
+            <button id="gallery-edit-button" disabled>エディターを開く</button></header>
+        <p id="gallery-note" role="status">読み込み中…</p><div id="table-grid"></div>
+    </section>
     <div id="game-container">
         <div id="phaser-container">
-            <div id="phaser-stage"><div id="score-display" aria-label="得点"><span id="current-score">Score: 0</span></div></div>
+            <div id="phaser-stage"><div id="score-display" aria-label="得点"><span id="current-score">Score: 0</span></div>
+                <div id="table-info" hidden><div id="table-name"></div><div id="round-progress"></div></div>
+                <div id="launch-prompt" hidden></div>
+            </div>
             <div id="control-panel">
+                <button id="tables-button" disabled>台を選ぶ</button>
                 <button id="test-button">テストプレイ</button>
                 <button id="stop-button" style="display: none;">エディターに戻る</button>
                 <button id="save-button">保存</button>
@@ -164,14 +216,26 @@
                     <p class="help">操作すると音声が有効になります。</p>
                 </div></details>
             </div>
+            <div id="play-controls" hidden>
+                <button id="left-control" class="flipper-control" aria-label="左フリッパー">◀ 左</button>
+                <button id="launch-button">発射</button><button id="nudge-button">揺らす</button>
+                <button id="right-control" class="flipper-control" aria-label="右フリッパー">右 ▶</button>
+            </div>
             <div id="game-over">
                 <h2>Game Over</h2>
                 <p>Score: <span id="final-score">0</span></p>
+                <p id="round-result"></p>
                 <button id="restart-button">もう一度</button>
+                <button id="next-table-button" hidden>次の台へ</button>
+                <button id="result-tables-button" hidden>台を選び直す</button>
                 <button id="edit-button">エディットに戻る</button>
             </div>
         </div>
         <div id="properties-panel">
+            <section id="arcade-details" hidden><div class="eyebrow">TABLE GUIDE</div><h2 id="guide-name"></h2><p id="guide-description"></p><p id="guide-tip"></p>
+                <p>左：← / Z<br>右：→ / スラッシュ<br>発射：Space / Enter<br>揺らす：Q（2秒間隔）</p>
+                <p>画面下のボタンでも操作できます。<br>1ゲーム3球、全バンパーで +1,000点。</p></section>
+            <div id="editor-controls">
             <h2>ピンボールエディター</h2>
             <p id="status-message" role="status" aria-live="polite">読み込み中…</p>
             <p class="help">操作：左矢印 / Z、右矢印 / スラッシュ</p>
@@ -199,10 +263,11 @@
                     <p>オブジェクトを選択してください</p>
                 </div>
             </div>
+            </div>
         </div>
     </div>
 
-    <!-- Generated by tools/build-game.py. Edit src/index.template.html and src/media.js. -->
+    <!-- Generated by tools/build-game.py. Edit src/index.template.html, src/media.js and src/tables.js. -->
     <script id="embedded-assets" type="application/json">__PINBALL_ASSET_PACK__</script>
     <script>
         'use strict';
@@ -213,6 +278,8 @@
         const STORAGE_KEY = 'pinballLayout';
         const LEGACY_BACKUP_KEY = 'pinballLayoutLegacyBackup';
         const $ = id => document.getElementById(id);
+
+        /* PINBALL_TABLES_RUNTIME */
 
         // 保存・UI・プレイ開始で共通の検証を通す。現在の盤面は検証後に置換する。
         class LayoutCodec {
@@ -311,6 +378,9 @@
                 this.mode = 'loading';
                 this.layoutData = null;
                 this.board = { ...DEFAULT_BOARD };
+                this.activeTable = null;
+                this.arcade = new TableArcade(this);
+                this.touch = { left: new Set(), right: new Set() };
                 this.media = new PinballMedia(this);
                 this.audio = new PinballAudio(this.media, message => this.notify(message));
                 this.editor = new EditorScene(this);
@@ -353,6 +423,35 @@
             }
 
             setupUIEvents() {
+                $('game-container').inert = true;
+                $('gallery-edit-button').addEventListener('click', () => this.closeGallery());
+                $('tables-button').addEventListener('click', () => this.openGallery());
+                $('result-tables-button').addEventListener('click', () => this.openGallery());
+                $('next-table-button').addEventListener('click', () => {
+                    const index = PINBALL_TABLES.indexOf(this.activeTable);
+                    this.startTable(PINBALL_TABLES[(index + 1) % PINBALL_TABLES.length].id);
+                });
+                $('launch-button').addEventListener('click', () => this.play.launchBall());
+                $('nudge-button').addEventListener('click', () => this.play.nudge());
+                for (const side of ['left', 'right']) {
+                    const button = $(side + '-control');
+                    button.addEventListener('pointerdown', event => {
+                        if (this.mode !== 'play' || !this.activeTable) return;
+                        event.preventDefault(); button.setPointerCapture(event.pointerId);
+                        this.touch[side].add(event.pointerId); button.classList.add('pressed');
+                    });
+                    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, event => {
+                        this.touch[side].delete(event.pointerId);
+                        if (!this.touch[side].size) button.classList.remove('pressed');
+                    });
+                }
+                document.addEventListener('keydown', event => {
+                    if (this.mode !== 'play' || !this.activeTable || /^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) return;
+                    if (['Space', 'Enter', 'KeyQ'].includes(event.code)) {
+                        event.preventDefault();
+                        if (!event.repeat) event.code === 'KeyQ' ? this.play.nudge() : this.play.launchBall();
+                    }
+                });
                 $('test-button').addEventListener('click', () => this.startGame());
                 $('stop-button').addEventListener('click', () => this.stopGame());
                 $('save-button').addEventListener('click', () => this.editor.saveLayout());
@@ -374,8 +473,8 @@
                 document.addEventListener('click', event => {
                     if (event.target.closest('button:not(:disabled)') && !event.target.closest('#mute-button')) this.audio.cue('ui-click');
                 }, true);
-                document.addEventListener('visibilitychange', () => { if (document.hidden) this.audio.hide(); });
-                window.addEventListener('blur', () => this.audio.hide());
+                document.addEventListener('visibilitychange', () => { if (document.hidden) { this.audio.hide(); this.releaseControls(); } });
+                window.addEventListener('blur', () => { this.audio.hide(); this.releaseControls(); });
                 window.addEventListener('pagehide', () => this.audio.hide());
             }
 
@@ -393,11 +492,76 @@
                     $(id).disabled = !editing;
                 }
                 $('stop-button').style.display = playing ? '' : 'none';
-                $('properties-panel').inert = !editing;
-                $('properties-panel').style.opacity = editing ? '1' : '0.5';
+                const arcade = !!this.activeTable && playing;
+                $('editor-controls').hidden = arcade;
+                $('arcade-details').hidden = !arcade;
+                $('properties-panel').inert = !editing && !arcade;
+                $('properties-panel').style.opacity = editing || arcade ? '1' : '0.5';
+                document.body.classList.toggle('arcade-playing', arcade);
                 $('game-over').style.display = mode === 'over' ? 'flex' : 'none';
                 $('restart-button').disabled = mode !== 'over';
                 $('score-display').style.display = playing ? 'block' : 'none';
+                $('table-info').hidden = !arcade;
+                $('play-controls').hidden = !arcade || mode === 'over';
+                $('next-table-button').hidden = !arcade;
+                $('result-tables-button').hidden = !arcade;
+                $('tables-button').disabled = !editing && !playing;
+                if (!playing) $('launch-prompt').hidden = true;
+                if (mode !== 'play') this.releaseControls();
+                this.fitToolbar();
+            }
+
+            releaseControls() {
+                for (const side of ['left', 'right']) { this.touch[side].clear(); $(side + '-control').classList.remove('pressed'); }
+                this.play?.input?.keyboard?.resetKeys();
+            }
+
+            openGallery() {
+                if (this.mode === 'play' || this.mode === 'over') this.stopGame();
+                else if (this.mode !== 'edit') return;
+                this.arcade.render();
+                $('table-gallery').hidden = false;
+                $('game-container').inert = true;
+                $('gallery-edit-button').focus();
+            }
+
+            closeGallery() {
+                if (this.mode !== 'edit') return;
+                $('table-gallery').hidden = true;
+                $('game-container').inert = false;
+                $('tables-button').focus();
+                this.game.scale.refresh();
+            }
+
+            startTable(id) {
+                if (this.mode !== 'edit' && this.mode !== 'over') return;
+                const table = PINBALL_TABLES.find(table => table.id === id);
+                if (!table) return;
+                const restarting = this.mode === 'over';
+                this.layoutData = LayoutCodec.normalize(table.layout);
+                this.activeTable = table;
+                this.setBoard(this.layoutData.board);
+                $('table-gallery').hidden = true;
+                $('game-container').inert = false;
+                $('guide-name').textContent = table.name;
+                $('guide-description').textContent = table.description;
+                $('guide-tip').textContent = table.tip;
+                $('table-name').textContent = table.name;
+                this.editor.handlePointerUp();
+                this.setMode('starting');
+                const data = { layoutData: this.layoutData, tableId: table.id };
+                if (restarting) this.play.scene.restart(data);
+                else { this.editor.scene.sleep(); this.editor.scene.launch('GameScene', data); }
+            }
+
+            updateRound(game) {
+                if (!game.table) return;
+                const best = this.arcade.best(game.table.id);
+                $('round-progress').textContent = `残り ${game.ballsLeft}球　/　${game.targetAwarded ? '目標達成' : '目標 ' + game.table.target}　/　BEST ${best}　/　的 ${game.hitBumpers.size}/${game.bumperCount}${game.sweepAwarded ? ' +1,000達成' : ''}`;
+                $('launch-prompt').hidden = !game.waitingLaunch || game.isGameOver;
+                $('launch-prompt').textContent = `${4 - game.ballsLeft}球目 — 発射ボタン / Space / Enter`;
+                $('launch-button').disabled = !game.waitingLaunch;
+                $('nudge-button').disabled = game.waitingLaunch;
             }
 
             setScore(score) { $('current-score').textContent = `Score: ${score}`; }
@@ -421,6 +585,7 @@
             startGame() {
                 if (this.mode !== 'edit') return;
                 try {
+                    this.activeTable = null;
                     this.layoutData = LayoutCodec.normalize(this.editor.getLayoutData());
                     this.editor.handlePointerUp();
                     this.setMode('starting');
@@ -435,6 +600,7 @@
             stopGame() {
                 if (this.mode !== 'play' && this.mode !== 'over') return;
                 this.audio.stopAll();
+                this.activeTable = null;
                 this.setMode('returning');
                 this.play.scene.stop();
                 this.play.scene.wake('EditorScene');
@@ -443,11 +609,16 @@
             restartGame() {
                 if (this.mode !== 'over') return;
                 this.setMode('starting');
-                this.play.scene.restart({ layoutData: this.layoutData });
+                this.play.scene.restart({ layoutData: this.layoutData, tableId: this.activeTable?.id });
             }
 
             showGameOver(score) {
                 $('final-score').textContent = score;
+                if (this.activeTable) {
+                    const previous = this.arcade.best(this.activeTable.id);
+                    this.arcade.record(this.activeTable, score);
+                    $('round-result').textContent = `${this.activeTable.name} — ${score >= this.activeTable.target ? '目標達成！' : '目標 ' + this.activeTable.target + '点'}${score > previous ? ' / BEST更新！' : ''}${this.arcade.storageWarning ? ' / 記録はこの画面内のみ保持' : ''}`;
+                } else $('round-result').textContent = '';
                 this.setMode('over');
             }
         }
@@ -607,7 +778,8 @@
             }
             bodyOptions() {
                 return { isStatic: !this.scene.isPlaying, ignoreGravity: true, frictionAir: 0.05,
-                    density: 0.01, restitution: this.restitution };
+                    density: 0.01, restitution: this.restitution,
+                    ...(this.scene.table ? { collisionFilter: { category: 2, mask: 1 } } : {}) };
             }
             displayAngle() { return this.restAngle; }
             bodyPosition() {
@@ -646,7 +818,8 @@
                 body.force.y -= body.mass * gravity.y * gravityScale;
                 const target = (this.isFlipping ? this.flipAngle : this.restAngle) * Math.PI / 180;
                 const error = Math.atan2(Math.sin(target - body.angle), Math.cos(target - body.angle));
-                this.matter.body.setAngularVelocity(body, Math.max(-0.25, Math.min(0.25, error * 0.45)));
+                const maxSpeed = this.scene.table ? .35 : .25;
+                this.matter.body.setAngularVelocity(body, Math.max(-maxSpeed, Math.min(maxSpeed, error * (this.scene.table ? .6 : .45))));
             }
             serialize() {
                 return { ...super.serialize(), isLeft: this.isLeft, restAngle: this.restAngle, flipAngle: this.flipAngle };
@@ -677,11 +850,18 @@
         function createBoundaries(scene, board) {
             const objects = [];
             try {
-                for (const [x, y, width, height, name] of [
+                // Arcade walls extend outwards; their inner faces remain at x/y=10.
+                // A thick exterior prevents fast balls from being resolved to the wrong side.
+                const walls = scene.table ? [
+                    [-24, board.height / 2, 68, board.height, '左壁'],
+                    [board.width + 24, board.height / 2, 68, board.height, '右壁'],
+                    [board.width / 2, -24, board.width + 136, 68, '上壁']
+                ] : [
                     [5, board.height / 2, 10, board.height, '左壁'],
                     [board.width - 5, board.height / 2, 10, board.height, '右壁'],
                     [board.width / 2, 5, board.width, 10, '上壁']
-                ]) objects.push(new Wall(scene, x, y, width, height, { name, isStatic: true, isBoundary: true }));
+                ];
+                for (const [x, y, width, height, name] of walls) objects.push(new Wall(scene, x, y, width, height, { name, isStatic: true, isBoundary: true }));
                 return objects;
             } catch (error) { objects.forEach(object => object.destroy()); throw error; }
         }
@@ -713,11 +893,15 @@
                 this.setupUIEvents();
                 this.updateObjectList();
                 this.app.setMode('edit');
+                if (this.app.arcade) {
+                    this.app.arcade.render();
+                    $('gallery-edit-button').disabled = false;
+                }
                 this.app.notify('壁・バンパー・左右フリッパー・開始位置を配置できます。');
                 if (this.app.media?.failures.length) this.app.notify('一部の画像を読み込めませんでした。該当する物体は図形で表示します。', true);
             }
 
-            onWake() { this.handlePointerUp(); this.matter.world.pause(); this.app.setMode('edit'); }
+            onWake() { this.handlePointerUp(); this.matter.world.pause(); this.app.setBoard(this.board); this.app.setMode('edit'); }
 
             bind(id, event, handler) {
                 const element = $(id);
@@ -960,6 +1144,13 @@
                 this.score = 0;
                 this.isGameOver = false;
                 this.isPlaying = true;
+                this.table = PINBALL_TABLES.find(table => table.id === data.tableId) ?? null;
+                this.ballsLeft = this.table ? 3 : 1;
+                this.waitingLaunch = false;
+                this.hitBumpers = new Set();
+                this.sweepAwarded = false;
+                this.targetAwarded = false;
+                this.nextNudgeAt = 0;
             }
             create() {
                 this.events.once('shutdown', this.shutdown, this);
@@ -978,20 +1169,67 @@
                     if (record.type === 'ball') marker = record;
                     else this.objects.push(GameObject.deserialize(this, record));
                 }
+                if (this.table) for (const object of this.objects) {
+                    if (object.type !== 'flipper') object.gameObject.body.collisionFilter.category = 4;
+                }
                 this.ball = new Ball(this, marker?.x ?? this.board.width / 2, marker?.y ?? this.board.height / 3,
                     marker?.radius ?? 10, { ...(marker ?? {}), isBallPositionMarker: false });
                 this.objects.push(this.ball);
-                this.ball.setVelocity(Math.random() * 4 - 2, -5);
+                this.spawn = { x: this.ball.x, y: this.ball.y };
+                this.bumperCount = this.objects.filter(o => o.type === 'bumper').length;
                 this.matter.world.resume();
                 this.app.setMode('play');
+                if (this.table) {
+                    // Keep every preview shape and its physical counterpart at the same coordinates.
+                    this.skin?.backdrop?.setTint(parseInt(this.table.accent.slice(1), 16));
+                    this.prepareBall();
+                } else this.ball.setVelocity(Math.random() * 4 - 2, -5);
                 this.app.audio?.beginGame();
+            }
+            prepareBall() {
+                this.waitingLaunch = true;
+                this.app.releaseControls?.();
+                this.ball.setPosition(this.spawn.x, this.spawn.y);
+                this.ball.setVelocity(0, 0);
+                this.matter.body.setAngularVelocity(this.ball.gameObject.body, 0);
+                for (const object of this.objects) if (object.type === 'flipper') {
+                    object.reset(); object.updateProperties();
+                    this.matter.body.setAngularVelocity(object.gameObject.body, 0);
+                    this.matter.body.setVelocity(object.gameObject.body, { x: 0, y: 0 });
+                }
+                this.nextNudgeAt = 0;
+                this.matter.world.pause();
+                this.app.updateRound?.(this);
+            }
+            launchBall() {
+                if (!this.table || this.isGameOver || !this.waitingLaunch || this.app.mode !== 'play') return;
+                this.waitingLaunch = false;
+                this.ball.setVelocity(this.table.launch.x, this.table.launch.y);
+                this.matter.world.resume();
+                this.app.audio?.cue('game-start');
+                this.app.updateRound?.(this);
+            }
+            nudge() {
+                if (!this.table || this.isGameOver || this.waitingLaunch || this.app.mode !== 'play' || this.time.now < this.nextNudgeAt) return;
+                const ball = this.ball.gameObject, velocity = ball.body.velocity;
+                // Do not retrieve a ball once it has fallen below the flippers.
+                if (ball.y > 920) return;
+                this.ball.setVelocity(velocity.x + (ball.x < this.board.width / 2 ? 3 : -3), Math.min(velocity.y, 0) - 4);
+                this.nextNudgeAt = this.time.now + 2000;
+                this.app.audio?.cue('wall-soft');
             }
             beforePhysicsStep() {
                 if (this.isGameOver) return;
+                if (this.table && this.ball?.gameObject) {
+                    const velocity = this.ball.gameObject.body.velocity, speed = Math.hypot(velocity.x, velocity.y);
+                    // Authored tables have 24px rails. Bound displacement to avoid high-speed tunnelling.
+                    if (speed > 22) this.ball.setVelocity(velocity.x * 22 / speed, velocity.y * 22 / speed);
+                }
                 const sounds = new Set();
                 for (const object of this.objects) {
                     if (object.type !== 'flipper') continue;
-                    const down = object.isLeft ? this.keys.left.isDown || this.keys.z.isDown : this.keys.right.isDown || this.keys.slash.isDown;
+                    const down = object.isLeft ? this.keys.left.isDown || this.keys.z.isDown || !!this.app.touch?.left.size :
+                        this.keys.right.isDown || this.keys.slash.isDown || !!this.app.touch?.right.size;
                     if (down !== object.isFlipping) sounds.add(down ? 'flipper-up' : 'flipper-down');
                     if (down) object.flip(); else object.reset();
                     object.drive();
@@ -999,11 +1237,16 @@
                 for (const sound of sounds) this.app.audio?.cue(sound);
             }
             update() {
-                if (this.isGameOver) return;
-                if (this.ball?.gameObject?.y > this.board.height + this.ball.radius + 50) this.gameOver();
+                if (this.isGameOver || this.waitingLaunch) return;
+                if (this.ball?.gameObject?.y > this.board.height + this.ball.radius + 50) {
+                    this.ballsLeft--;
+                    if (this.table && this.ballsLeft > 0) {
+                        this.app.audio?.cue('drain'); this.prepareBall();
+                    } else this.gameOver();
+                }
             }
             handleCollision(event) {
-                if (this.isGameOver || !this.ball?.gameObject) return;
+                if (this.isGameOver || this.waitingLaunch || !this.ball?.gameObject) return;
                 const seen = new Set();
                 for (const pair of event.pairs) {
                     const { bodyA, bodyB } = pair;
@@ -1012,7 +1255,17 @@
                     const object = other?.gameObject?.userData;
                     if (!object || seen.has(object)) continue;
                     seen.add(object);
-                    if (object?.type === 'bumper') { this.addScore(object.score); object.flash(); }
+                    if (object?.type === 'bumper') {
+                        this.addScore(object.score); object.flash();
+                        if (this.table) {
+                            this.hitBumpers.add(object);
+                            object.collected = true;
+                            if (!this.sweepAwarded && this.hitBumpers.size === this.bumperCount) {
+                                this.sweepAwarded = true; this.addScore(1000);
+                            }
+                            this.app.updateRound?.(this);
+                        }
+                    }
                     else if (object?.type === 'flipper' && object.isFlipping) this.addScore(10);
                     if (object.type === 'bumper') this.app.audio?.cue('bumper');
                     else {
@@ -1028,6 +1281,8 @@
                 this.score += points;
                 this.scoreText.setText(`Score: ${this.score}`);
                 this.app.setScore?.(this.score);
+                if (this.table && this.score >= this.table.target) this.targetAwarded = true;
+                this.app.updateRound?.(this);
             }
             gameOver() {
                 if (this.isGameOver) return;
@@ -1038,6 +1293,7 @@
                 this.input.keyboard.enabled = false;
                 this.skin?.clearEffects();
                 this.app.audio?.endGame();
+                this.app.updateRound?.(this);
                 this.app.showGameOver(this.score);
             }
             shutdown() {
