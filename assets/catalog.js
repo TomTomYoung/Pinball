@@ -2,7 +2,7 @@
 window.PINBALL_ASSETS = {
   "version": 1,
   "created": "2026-10-16",
-  "status": "assets complete; game integration pending",
+  "status": "assets complete; integrated in root index.html",
   "board": {
     "width": 800,
     "height": 1000

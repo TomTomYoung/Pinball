@@ -10,6 +10,8 @@ Phaser 3.60.0とMatterを使う、単一HTMLのピンボール盤面エディタ
 
 2026-10-16の精査で判明した初期化順、累積するボディ拡縮、外周壁の混入、再プレイ時の古い参照、読込失敗による盤面消失を修正しました。フリッパーは固定支点のヒンジと角速度で駆動します。実ブラウザでの再プレイ4回と保存往復を含む回帰テストを追加しました。残機・発射装置・ステージクリアなどを持つ完成ゲームではなく、編集と試遊の土台を整えた段階です。
 
+背景、金属レール、球、フリッパー、バンパー、衝突演出、UIと、効果音9種・BGM1曲を本体へ組み込みました。画像と音はHTMLへ内包しています。起動時は無音で、操作後に音が有効になります。上部のミュート・音量で調整できます。任意の色や素材に合わない縦横比は従来の図形で表示し、編集値と当たり判定を維持します。
+
 ## 読む順番
 
 1. [SPECIFICATION.md](./SPECIFICATION.md): 現行の操作、物理、保存形式、旧データの移行。
@@ -27,15 +29,19 @@ Phaser 3.60.0とMatterを使う、単一HTMLのピンボール盤面エディタ
 
 ## 開発者向けテスト
 
-package.jsonの依存はテスト専用で、HTMLの実行には不要です。
+package.jsonの依存はテスト用で、HTMLの実行には不要です。原稿は`src/index.template.html`と`src/media.js`で、開発時だけPython標準ライブラリのスクリプトでindex.htmlを再生成します。
 
 ```sh
 npm ci
+python tools/build-game.py
 npm test
 npx playwright install chromium
 npm run test:browser
+npm run test:media
 ```
 
 `npm test`は実際のPhaser図形とMatterを使用する14件の回帰テスト、`npm run test:browser`はChromiumの実画面で操作する8件です。ブラウザテストはテスト中だけ自動で静的サーバーを起動・終了し、CDNへのリクエストは同じバージョンのローカルPhaserへ差し替えます。別のChromium実行ファイルを使う環境は`PINBALL_BROWSER_EXECUTABLE`を指定できます。
+
+`npm run test:media`は追加の6件です。HTMLだけを別フォルダへコピーして直接起動し、素材表示、物理への追従、ミュート・音量・停止、再プレイ時の後片付け、読込失敗時の継続を検証します。コードを変更したら、再生成したindex.htmlと原稿を両方コミットしてください。
 
 `backup`、`backup2`、別リポジトリ`TomTomYoung/pinball2`は対象外です。
