@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PINBALL ARCADE — 20の台とエディター</title>
+    <title>PINBALL ARCADE — 30の台とエディター</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
     <style>
         body {
@@ -136,7 +136,8 @@
         #audio-settings summary { cursor: pointer; padding: 12px 8px; }
         #audio-settings .audio-options { position: fixed; z-index: 201; width: 230px; box-sizing: border-box; padding: 14px; background: #122334; border: 1px solid #54718a; border-radius: 6px; }
         .audio-options label { display: block; margin: 6px 0; }
-        .audio-options input { display: block; width: 100%; accent-color: #00aaff; }
+        .audio-options input[type="checkbox"] {display:inline-block;width:auto;margin-right:8px}
+        .audio-options input:not([type="checkbox"]) { display: block; width: 100%; accent-color: #00aaff; }
         #score-display { display: none; position: absolute; top: 8px; left: 8px; width: min(240px, 45%); aspect-ratio: 10 / 3; background-position: center; background-repeat: no-repeat; background-size: contain; z-index: 5; pointer-events: none; }
         #score-display span { position: absolute; inset: 26% 10% 10%; display: flex; align-items: center; font: clamp(14px, 2vw, 23px) monospace; color: #e3f4ff; }
         .gallery-filters {display:flex;gap:8px;flex-wrap:wrap;max-width:1440px;margin:22px auto 0}
@@ -199,10 +200,10 @@
 </head>
 <body>
     <section id="table-gallery" aria-label="ピンボール台を選ぶ">
-        <header class="gallery-header"><div><div class="eyebrow">TWENTY TABLES / THREE BALLS</div>
-            <h1>PINBALL ARCADE</h1><p>定番10台と、仕掛けを試す10台。好きな台から始めましょう。</p></div>
+        <header class="gallery-header"><div><div class="eyebrow">THIRTY TABLES / THREE BALLS</div>
+            <h1>PINBALL ARCADE</h1><p>定番・仕掛け・アクション、各10台。好きな台から始めましょう。</p></div>
             <button id="gallery-edit-button" disabled>エディターを開く</button></header>
-        <div class="gallery-filters" role="group" aria-label="台の分類"><button data-filter="all" aria-pressed="true">すべて 20</button><button data-filter="classic" aria-pressed="false">定番 10</button><button data-filter="lab" aria-pressed="false">新機能の試遊 10</button></div>
+        <div class="gallery-filters" role="group" aria-label="台の分類"><button data-filter="all" aria-pressed="true">すべて 30</button><button data-filter="classic" aria-pressed="false">定番 10</button><button data-filter="lab" aria-pressed="false">新機能の試遊 10</button><button data-filter="action" aria-pressed="false">アクション 10</button></div>
         <p id="gallery-note" role="status">読み込み中…</p><div id="table-grid"></div>
     </section>
     <div id="game-container">
@@ -218,7 +219,7 @@
                 <button id="save-button">保存</button>
                 <button id="load-button">読込</button>
                 <button id="mute-button" aria-pressed="false">ミュート</button>
-                <details id="audio-settings"><summary>音量</summary><div class="audio-options">
+                <details id="audio-settings"><summary>音・演出</summary><div class="audio-options"><label><input type="checkbox" id="reduce-effects">演出を軽減</label>
                     <label>効果音<input id="sfx-volume" type="range" min="0" max="1" step="0.01" value="0.65"></label>
                     <label>BGM<input id="music-volume" type="range" min="0" max="1" step="0.01" value="0.25"></label>
                     <p class="help">操作すると音声が有効になります。</p>
@@ -289,10 +290,14 @@
         const LEGACY_BACKUP_KEY = 'pinballLayoutLegacyBackup';
         const $ = id => document.getElementById(id);
 
+        /* PINBALL_ACTION_MODEL */
         /* PINBALL_ENTITY_MODEL */
+        /* PINBALL_ACTION_PRESETS */
+        /* PINBALL_ACTION_RUNTIME */
         /* PINBALL_ENTITY_RUNTIME */
         /* PINBALL_TABLES_RUNTIME */
         /* PINBALL_LAB_TABLES */
+        /* PINBALL_ACTION_TABLES */
 
         // 保存・UI・プレイ開始で共通の検証を通す。現在の盤面は検証後に置換する。
         class LayoutCodec {
@@ -496,6 +501,8 @@
                 $('restart-button').addEventListener('click', () => this.restartGame());
                 $('edit-button').addEventListener('click', () => this.stopGame());
                 $('audio-settings').addEventListener('toggle', () => this.fitToolbar());
+                $('reduce-effects').checked=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;this.reduceEffects=$('reduce-effects').checked;
+                $('reduce-effects').addEventListener('change',()=>{this.reduceEffects=$('reduce-effects').checked;});
                 $('mute-button').addEventListener('click', () => {
                     this.audio.setMuted(!this.audio.muted);
                     $('mute-button').setAttribute('aria-pressed', String(this.audio.muted));
@@ -680,7 +687,7 @@
                 // 派生クラスの全属性が確定してからcreateGameObjectを呼ぶ。
             }
 
-            bodyOptions() { return { isStatic: this.entity?.motion?.mode!=='force', restitution: this.restitution }; }
+            bodyOptions() { return { isStatic: !(this.entity?.motion?.mode==='force'||this.entity?.physics?.body==='dynamic'), restitution: this.restitution }; }
             shape() { return { type: 'rectangle', width: this.width, height: this.height }; }
             bodyPosition() { return { x: this.x, y: this.y }; }
             displayAngle() { return this.angle; }
@@ -779,7 +786,7 @@
                 this.isStatic = options.isStatic ?? true;
                 this.createGameObject();
             }
-            bodyOptions() { return { isStatic: this.entity?.motion?.mode==='force'?false:this.isStatic, restitution: this.restitution }; }
+            bodyOptions() { return { isStatic: this.entity?.motion?.mode==='force'||this.entity?.physics?.body==='dynamic'?false:this.isStatic, restitution: this.restitution }; }
             serialize() { return { ...super.serialize(), isStatic: this.isStatic }; }
         }
 
@@ -822,7 +829,7 @@
             bodyOptions() {
                 return { isStatic: !this.scene.isPlaying, ignoreGravity: true, frictionAir: 0.05,
                     density: 0.01, restitution: this.restitution,
-                    ...(this.scene.table ? { collisionFilter: { category: 2, mask: 1 } } : {}) };
+                    ...(this.scene.table ? { collisionFilter: { category: 2, mask: 9 } } : {}) };
             }
             displayAngle() { return this.restAngle; }
             bodyPosition() {
@@ -898,8 +905,8 @@
             }
             createGameObject(){this.gameObject=this.radius!==undefined?this.scene.add.circle(this.x,this.y,this.radius,0xffffff):this.scene.add.rectangle(this.x,this.y,this.width,this.height,0xffffff);this.finishCreation();}
             shape(){return this.radius!==undefined?{type:'circle',radius:this.radius}:super.shape();}
-            bodyOptions(){return{isStatic:this.entity?.motion?.mode!=='force',isSensor:this.sensor,restitution:this.restitution};}
-            deviceLabel(){const p=this.entity?.prototype;return({accelerate:'BOOST',redirect:'TURN',brake:'SLOW',reflector:'REFLECT',magnet:'PULL',repeller:'PUSH',vortex:'VORTEX',capture:'HOLD',warp:'WARP',breakable:'BREAK',destroyer:'VOID',splitter:'SPLIT',absorber:'RECYCLE',launcher:'CHARGE',moving:'MOVE',rotating:'ROTATE'})[p]??'DEVICE';}
+            bodyOptions(){return{isStatic:!(this.entity?.motion?.mode==='force'||this.entity?.physics?.body==='dynamic'),isSensor:this.sensor,restitution:this.restitution};}
+            deviceLabel(){const e=this.entity?.components?.enemy;if(e)return({both:'両',ball:'弾',flipper:'振',none:'時'})[e.hurtBy??'both'];const p=this.entity?.prototype;return({accelerate:'BOOST',redirect:'TURN',brake:'SLOW',reflector:'REFLECT',magnet:'PULL',repeller:'PUSH',vortex:'VORTEX',capture:'HOLD',warp:'WARP',breakable:'BREAK',destroyer:'VOID',splitter:'SPLIT',absorber:'RECYCLE',launcher:'CHARGE',moving:'MOVE',rotating:'ROTATE',giantBall:'GROW',powerBall:'POWER',blastBall:'BLAST',sparkBall:'SPARK',pierceBall:'PIERCE',piston:'PISTON',spring:'SPRING',gravityCrate:'MASS',enemySpawner:'SPAWN',breachZone:'DANGER'})[p]??'DEVICE';}
             serialize(){return{...super.serialize(),shape:this.deviceShape,sensor:this.sensor,...(this.radius!==undefined?{radius:this.radius}:{})};}
         }
 
@@ -1326,7 +1333,7 @@
                     this.ballsLeft--;
                     if(this.table&&this.ballsLeft>0){this.app.audio?.cue('drain');this.prepareBall();}else this.gameOver();
                 }
-                if(this.table?.group==='lab'){
+                if(this.table?.group==='lab'||this.table?.group==='action'){
                     const charged=this.objects.filter(o=>o.runtime?.active&&o.entity?.components?.charge).map(o=>Math.round(o.runtime.charge)).join(' / ');
                     $('feature-progress').textContent=`プレイ中 ${this.runtime.liveBalls().length}球${charged?'　充填 '+charged:''}　${this.table.control??''}`;
                 }else $('feature-progress').textContent='';
@@ -1360,9 +1367,9 @@
                 if (this.table && this.score >= this.table.target) this.targetAwarded = true;
                 this.app.updateRound?.(this);
             }
-            gameOver() {
+            gameOver(reason='') {
                 if (this.isGameOver) return;
-                this.isGameOver = true;
+                this.isGameOver = true;this.gameOverReason=reason;this.runtime.action.effects=[];this.runtime.action.pending=[];this.runtime.action.trails.clear();
                 for(const ball of this.balls)ball.setVelocity(0,0);this.runtime?.cancelInput();
                 this.matter.world.pause();
                 this.input.keyboard.resetKeys();
@@ -1370,7 +1377,7 @@
                 this.skin?.clearEffects();
                 this.app.audio?.endGame();
                 this.app.updateRound?.(this);
-                this.app.showGameOver(this.score);
+                this.app.showGameOver(this.score);if(reason)$('round-result').textContent=reason+'。 '+$('round-result').textContent;
             }
             shutdown() {
                 this.matter.world?.off('beforeupdate', this.beforePhysicsStep, this);

@@ -40,14 +40,14 @@ test('定番10台と新機能10台を絞り込み、選択後も既存の編集�
  const p=await open(t);await p.click('[data-filter="lab"]');assert.equal(await p.locator('[data-play]').count(),10);
  assert((await p.locator('[data-play]').evaluateAll(elements=>elements.map(e=>e.dataset.play))).every(id=>id.startsWith('lab-')));
  await p.click('[data-filter="classic"]');assert.equal(await p.locator('[data-play]').count(),10);
- await p.click('[data-filter="all"]');assert.equal(await p.locator('[data-play]').count(),20);
+ await p.click('[data-filter="all"]');assert.equal(await p.locator('[data-play]').count(),30);
 });
 
-test('19仕掛けプリセットを編集・保存・再読込でき、不正な挙動設定で元の物体を失わない',async t=>{
+test('37仕掛けプリセットを編集・保存・再読込でき、不正な挙動設定で元の物体を失わない',async t=>{
  const p=await open(t);await p.click('#gallery-edit-button');
- const keys=await p.locator('#feature-preset option').evaluateAll(items=>items.map(i=>i.value));assert.equal(keys.length,19);
+ const keys=await p.locator('#feature-preset option').evaluateAll(items=>items.map(i=>i.value));assert.equal(keys.length,37);
  for(const key of keys){await p.selectOption('#feature-preset',key);await p.click('#add-feature-button');assert(!await p.locator('#status-message').evaluate(e=>e.classList.contains('error')),key);}
- const before=await p.evaluate(()=>pinballGame.editor.getLayoutData());assert.equal(before.schemaVersion,2);assert.equal(before.objects.length,20);
+ const before=await p.evaluate(()=>pinballGame.editor.getLayoutData());assert.equal(before.schemaVersion,2);assert.equal(before.objects.length,38);
  await p.locator('.entity-settings summary').click();const editor=p.getByLabel('挙動設定JSON');await editor.fill('{"version":1,"rules":[{"on":"tick","effects":[{"op":"eval"}]}]}');await p.getByRole('button',{name:'挙動設定を適用'}).click();
  assert.match(await p.locator('#status-message').textContent(),/未対応作用/);assert.deepEqual(await p.evaluate(()=>pinballGame.editor.getLayoutData()),before);
  await p.click('#save-button');await p.reload();await p.waitForFunction(()=>pinballGame.mode==='edit');await p.click('#gallery-edit-button');await p.click('#load-button');

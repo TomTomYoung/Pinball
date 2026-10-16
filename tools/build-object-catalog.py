@@ -175,7 +175,7 @@ def markdown(value):
             kind = 'ul' if line.startswith('- ') else 'ol'
             if listing != kind:
                 close_list()
-                out.append('<' + kind + '>')
+                out.append('<ol start="' + line.split('.')[0] + '">' if kind == 'ol' else '<ul>')
                 listing = kind
             out.append('<li>' + inline(re.sub(r'^(- |\d+\. )', '', line)) + '</li>')
         else:
@@ -198,7 +198,7 @@ def build():
     pieces = source.split('\n## ')
     intro = pieces[0].split('\n', 1)[1]
     diagrams = [rail_figure(), bumper_figure(), flipper_figure(), ball_figure(), device_figure(), boundary_figure(), decor_figure()]
-    labels = ['壁・レール', 'バンパー', '左右フリッパー', 'ボール開始位置', '仕掛け・19プリセット', '実ボール・外周・落球', '装飾・演出・UI', 'スキン・座標・範囲', '20台の構成例', '正本と更新方法']
+    labels = ['壁・レール', 'バンパー', '左右フリッパー', 'ボール開始位置', '仕掛け・37プリセット', '実ボール・外周・落球', '装飾・演出・UI', 'スキン・座標・範囲', '30台の構成例', '正本と更新方法']
     sections, nav = [], []
     assert len(pieces)-1 == len(labels), 'Update navigation for new sections'
     for i, part in enumerate(pieces[1:], 1):
@@ -210,7 +210,7 @@ def build():
             '<meta name="color-scheme" content="dark light"><title>Pinball オブジェクトカタログ</title><style>' + CSS + '</style></head><body id="top">'
             '<header class="hero"><div class="eyebrow">PINBALL / OBJECT CATALOG / 2026.10</div><h1>オブジェクトカタログ</h1>'
             '<div class="intro">' + markdown(intro) + '</div><div class="stats"><span><b>05</b>配置できる型</span>'
-            '<span><b>20</b>完成台の構成例</span><span><b>49</b>既存の画像・音素材</span></div></header>'
+            '<span><b>30</b>完成台の構成例</span><span><b>49</b>既存の画像・音素材</span></div></header>'
             '<div class="shell"><aside><p>CONTENTS</p><nav aria-label="カタログ目次">' + ''.join(nav) + '</nav>'
             '<div class="controls"><label><input id="show-bounds" type="checkbox" checked>当たり判定の線を表示</label>'
             '<span class="legend"><i>＋</i>保存する位置・支点</span></div></aside><main>' + ''.join(sections) + '</main></div>'

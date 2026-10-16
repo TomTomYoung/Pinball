@@ -5,7 +5,7 @@ class EntityRuntime {
         this.scene=scene; this.time=0; this.dt=1/60; this.serial=0; this.contactSerial=0; this.frame=0;
         this.records=new Map();this.byId=new Map();this.queue=[];this.removals=[];this.signals=[];this.pendingBursts=[];
         this.input={left:false,right:false,action:false};this.lastTap={};this.sequence=[];this.cancelled=false;
-        this.seed=(scene.layoutData.seed??12345)>>>0;this.trace=[];this.eventBudget=0;this.round=0;
+        this.seed=(scene.layoutData.seed??12345)>>>0;this.trace=[];this.eventBudget=0;this.round=0;this.action=new ActionRuntime(this);
         for(const o of scene.objects)this.register(o);
         for(const o of [...this.records.keys()])this.emit(o,'spawn',null,{});
         this.flush();
@@ -21,14 +21,14 @@ class EntityRuntime {
             r.graphics=this.scene.add.graphics().setDepth(30);
             if(o.type==='device')r.label=this.scene.add.text(o.x,o.y,o.deviceLabel(),{fontSize:'12px',fontFamily:'Arial',color:'#f0fbff',fontStyle:'bold'}).setOrigin(.5).setDepth(31);
         }
-        return r;
+        this.action?.register(o);return r;
     }
     applyPhysics(o) {
         const body=o.gameObject?.body,p=o.entity?.physics;
         if(!body||!p)return;
-        if(p.mass!==undefined&&!body.isStatic)this.scene.matter.body.setMass(body,p.mass);
+        if(p.mass!==undefined&&!body.isStatic)this.scene.matter.body.setMass(body,p.mass*(o.type==='ball'&&o.runtime?.originalRadius?(o.radius/o.runtime.originalRadius)**2:1));
         if(p.frictionAir!==undefined)body.frictionAir=p.frictionAir;
-        if(o.type==='ball')body.collisionFilter.mask=p.ballCollision===false?6:0xffffffff;
+        if(o.type==='ball')body.collisionFilter.mask=p.ballCollision===false?14:0xffffffff;
     }
     liveBalls() { return this.scene.balls.filter(b=>b.runtime?.active&&b.gameObject); }
     hasPendingBalls() { return this.pendingBursts.length>0; }
@@ -112,7 +112,7 @@ class EntityRuntime {
         if(this.scene.waitingLaunch||this.scene.isGameOver)return;
         this.dt=Math.min(.05,Math.max(.001,delta/1000));this.time+=this.dt;this.frame++;this.eventBudget=0;
         for(const r of this.records.values()){r.claimed=false;for(const[k,t]of r.timers)if(t<this.time)r.timers.delete(k);while(r.counts.size>256)r.counts.delete(r.counts.keys().next().value);r.modifiers=r.modifiers.filter(m=>m.until>this.time);}
-        this.readInput();
+        this.readInput();this.action.beforeStep();
         const signals=this.signals.splice(0,64);for(const s of signals)if(s.target.runtime?.active)this.emit(s.target,'signal',s.source,{name:s.name,value:s.value});
         for(const[o,r]of [...this.records]){
             if(!r.active)continue;const c=r.spec.components??{},body=this.body(o);
@@ -182,7 +182,7 @@ class EntityRuntime {
         if(down&&!r.down)r.swing++;
         if(f.charge){
             if(down){r.chargeLevel=Math.min(1,r.chargeLevel+this.dt/f.chargeTime);r.flipperState='charging';o.reset();}
-            else if(r.down){r.releasedCharge=r.chargeLevel;r.chargeLevel=0;r.flipperState='swing';r.swingUntil=this.time+.22+r.releasedCharge*.15;r.swing++;}
+            else if(r.down){r.releasedCharge=r.chargeLevel;r.chargeLevel=0;r.flipperState='swing';r.swingUntil=this.time+.22+r.releasedCharge*.15;r.swing++;const p=this.position(o);this.action.emit('burst',p.x,p.y,0xffcd70,35+75*r.releasedCharge);}
             if(r.flipperState==='swing'){if(this.time<r.swingUntil)o.flip();else{r.flipperState='returning';o.reset();}}
             else if(!down)o.reset();
             o.driveMultiplier=o.isFlipping?1+(f.boost-1)*r.releasedCharge:1;
@@ -200,6 +200,7 @@ class EntityRuntime {
         this.scene.matter.body.setAngularVelocity(next,velocity);o.gameObject.rotation=angle;o.gameObject.x=next.position.x;o.gameObject.y=next.position.y;
     }
     flipperHit(o,ball) {
+        this.action.flipperHit(o,ball);
         const r=o.runtime,f=r?.spec.components?.flipper;if(!f||!o.isFlipping)return;
         if(f.charge)ball.runtime.attackBoost=1+3*r.releasedCharge;
         if(f.scatter&&this.time>=(r.scatterAt??0)&&ball.runtime.generation<1){
@@ -221,8 +222,10 @@ class EntityRuntime {
                 suppress();a.runtime.splitAt=this.time+c.split.cooldown;this.enqueue(()=>this.split(b,c.split,a));
             }
         }
+        this.action.contact(a,b,pair,event);
         if(this.emit(a,'contact',b,event))pair.isSensor=true;
-        const attack=b.entity?.components?.attack?.damage??(b.type==='ball'?10:0);
+        let attack=b.entity?.components?.attack?.damage??(b.type==='ball'?10:b.type==='flipper'&&b.isFlipping?20*(1+2*(br.releasedCharge??0)):0);
+        if(b.type==='flipper'&&!b.isFlipping)attack=0;if(b.type==='ball')attack*=this.action.attackScale(b);
         if(c.health&&attack>0)this.enqueue(()=>this.damage(a,this.modifier(b,'attack',attack)*(br.attackBoost??1),b));
         if(a.type==='flipper'&&b.type==='ball')this.flipperHit(a,b);
     }
@@ -295,20 +298,20 @@ class EntityRuntime {
             const direction=angle+(count===1?0:(i/(count-1)-.5)*spread),radius=parent?.radius??9,probe={radius},pos=this.safePoint(source,probe,direction);
             if(!pos)continue;
             const inherited=parent?.entity?.components??{},entity={version:1,id:'spawn-'+(++this.serial),roles:['projectile'],owner:source.runtime?.id,
-                physics:{...EntityModel.clone(parent?.entity?.physics??{}),ballCollision:parent?.entity?.physics?.ballCollision??true},tags:EntityModel.clone(parent?.entity?.tags??[]),components:{lifetime:{seconds:12},attack:{damage:inherited.attack?.damage??10},...(inherited.health?{health:EntityModel.clone(inherited.health)}:{})}};
+                physics:{...EntityModel.clone(parent?.entity?.physics??{}),ballCollision:parent?.entity?.physics?.ballCollision??true},tags:EntityModel.clone(parent?.entity?.tags??[]),components:{...(inherited.projectile?{projectile:EntityModel.clone(inherited.projectile)}:{}),lifetime:{seconds:12},attack:{damage:inherited.attack?.damage??10},...(inherited.health?{health:EntityModel.clone(inherited.health)}:{})}};
             const ball=new Ball(this.scene,pos.x,pos.y,radius,{color:parent?.color??'#ffffff',restitution:parent?.restitution??.8,friction:parent?.friction??.005,isBallPositionMarker:false,entity});
-            this.scene.objects.push(ball);this.scene.balls.push(ball);const r=this.register(ball,(parent?.runtime.generation??0)+1);r.warpUntil=this.time+.25;r.captureUntil=this.time+.2;
+            this.scene.objects.push(ball);this.scene.balls.push(ball);const r=this.register(ball,(parent?.runtime.generation??0)+1);if(parent?.runtime){r.ballKind=parent.runtime.ballKind;r.kindUntil=parent.runtime.kindUntil;r.originalColor=parent.runtime.originalColor;if(parent.runtime.grownUntil){r.originalRadius=parent.runtime.originalRadius;r.originalMass=parent.runtime.originalMass;r.grownUntil=parent.runtime.grownUntil;}}r.warpUntil=this.time+.25;r.captureUntil=this.time+.2;
             this.setVelocity(ball,this.vectorAt(direction,Math.min(1200,Math.max(60,speed))));this.emit(ball,'spawn',null,{});created++;
         }
         return created;
     }
-    damage(o,amount,source) {
-        const r=o.runtime,c=o.entity?.components?.health;if(!r?.active||!c||!Number.isFinite(amount))return;
+    damage(o,amount,source,channel) {
+        const r=o.runtime,c=o.entity?.components?.health;if(!r?.active||!c||!Number.isFinite(amount)||!this.action.canDamage(o,source,channel))return;
         r.health=Math.max(0,r.health-Math.max(0,amount-c.armor));if(r.health===0){this.scene.addScore(c.score);this.destroy(o,source);}
     }
     destroy(o,source=null,quiet=false) {
         const r=o?.runtime;if(!r?.active)return;
-        if(!quiet)this.emit(o,'destroy',source,{});
+        this.action.destroyed(o,quiet);if(!quiet)this.emit(o,'destroy',source,{});
         for(const held of [...r.held]){if(!this.release(o,held)){held.runtime.heldBy=null;this.destroy(held);}}
         if(r.heldBy)r.heldBy.runtime.held=r.heldBy.runtime.held.filter(b=>b!==o);
         r.heldBy=null;r.active=false;r.graphics?.destroy();r.label?.destroy();r.graphics=r.label=null;
@@ -329,6 +332,10 @@ class EntityRuntime {
         const r=target.runtime,b=this.body(target),number=(v,otherwise=0)=>typeof v==='number'&&Number.isFinite(v)?v:otherwise;
         const vector=()=>{let v=Array.isArray(e.vector)?e.vector:[0,0];if(!v.every(Number.isFinite))return[0,0];const angle=e.space==='self'?this.angle(self):e.space==='projectile'?Math.atan2(...this.velocity(target).slice().reverse())*180/Math.PI:0,a=angle*Math.PI/180;return[v[0]*Math.cos(a)-v[1]*Math.sin(a),v[0]*Math.sin(a)+v[1]*Math.cos(a)];};
         switch(e.op){
+            case 'resize':if(target.type==='ball')this.action.upgrade(target,{kind:'keep',scale:Math.max(1,Math.min(3,number(e.value,2))),duration:e.duration??10});break;
+            case 'projectile':if(target.type==='ball')this.action.upgrade(target,{kind:e.kind??'normal',scale:1,duration:e.duration??10});break;
+            case 'spawn':{const p=this.position(target);this.action.requestSpawn(e.preset,p.x,p.y,target,.8);break;}
+            case 'fx':{const p=this.position(target);this.action.emit('burst',p.x,p.y,0x7deaff,Math.min(200,Math.max(10,number(e.value,70))));break;}
             case 'accelerate': this.addAcceleration(target,vector());break;
             case 'impulse': {const v=this.velocity(target),imp=vector(),mass=b?.mass??1;this.setVelocity(target,[v[0]+imp[0]/mass,v[1]+imp[1]/mass]);break;}
             case 'velocity':this.setVelocity(target,vector());break;
@@ -360,7 +367,7 @@ class EntityRuntime {
     }
     afterStep() {
         if(this.scene.waitingLaunch||this.scene.isGameOver)return;
-        this.flush();
+        this.flush();this.action.afterStep();if(this.scene.isGameOver)return;
         for(const burst of this.pendingBursts.filter(x=>x.due<=this.time))if(burst.source.runtime?.active){const c=burst.config;this.spawnFan(burst.source,c.count,c.speed,c.direction+this.angle(burst.source),c.spread);}
         this.pendingBursts=this.pendingBursts.filter(x=>x.due>this.time);
         for(const ball of this.liveBalls()){
@@ -369,6 +376,7 @@ class EntityRuntime {
         }
     }
     draw() {
+        this.action.draw();
         for(const[o,r]of this.records){if(!r.active)continue;const g=r.graphics;if(!g)continue;const p=this.position(o),c=r.spec.components??{};g.clear();
             if(c.field){g.lineStyle(1,parseInt(o.color.slice(1),16),.35);g.strokeCircle(p.x,p.y,c.field.radius);const v=this.vectorAt(c.field.direction+this.angle(o),24);g.lineBetween(p.x-v[0],p.y-v[1],p.x+v[0],p.y+v[1]);}
             const width=o.type==='flipper'?o.width:Math.max(50,o.width),y=p.y-(o.radius??o.height/2)-13;
@@ -386,7 +394,8 @@ class EntityRuntime {
         const ball=this.scene.ball,r=ball.runtime;if(this.body(ball).isStatic)this.scene.matter.body.setStatic(this.body(ball),false);
         r.heldBy=null;r.active=true;r.generation=0;r.born=this.time;r.health=ball.entity?.components?.health?.max??null;r.attackBoost=1;r.warpUntil=0;r.captureUntil=0;r.chargeLevel=0;
         this.body(ball).collisionFilter.mask=0xffffffff;ball.gameObject.setVisible(true);this.scene.skin?.views.get(ball)?.container.setVisible(true);this.scene.skin?.refresh(ball);this.applyPhysics(ball);
+        this.action.resetRound();
         for(const[o,state]of this.records)if(o.type==='flipper'&&Math.abs(o.width-state.base.width)>.01)this.resizeFlipper(o,state.base.width);
     }
-    shutdown() {this.queue=[];this.removals=[];this.signals=[];this.pendingBursts=[];for(const r of this.records.values()){r.graphics?.destroy();r.label?.destroy();}this.records.clear();this.byId.clear();}
+    shutdown() {this.action.shutdown();this.queue=[];this.removals=[];this.signals=[];this.pendingBursts=[];for(const r of this.records.values()){r.graphics?.destroy();r.label?.destroy();}this.records.clear();this.byId.clear();}
 }

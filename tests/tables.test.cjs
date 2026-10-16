@@ -8,11 +8,11 @@ function gameFor(a, table) {
     return g;
 }
 
-test('20台は異なる配置で、開始位置が物体に重ならず、旧10台はschema-1互換を保つ', () => {
+test('30台は異なる配置で、開始位置が物体に重ならず、旧10台はschema-1互換を保つ', () => {
     const a = loadApp();
-    assert.equal(a.PINBALL_TABLES.length, 20);
-    assert.equal(new Set(a.PINBALL_TABLES.map(t => t.id)).size, 20);
-    assert.equal(new Set(a.PINBALL_TABLES.map(t => JSON.stringify(t.layout.objects))).size, 20);
+    assert.equal(a.PINBALL_TABLES.length, 30);
+    assert.equal(new Set(a.PINBALL_TABLES.map(t => t.id)).size, 30);
+    assert.equal(new Set(a.PINBALL_TABLES.map(t => JSON.stringify(t.layout.objects))).size, 30);
     for (const table of a.PINBALL_TABLES) {
         const g = gameFor(a, table), ball = g.ball.gameObject.body;
         assert.equal(g.ballsLeft, 3); assert(g.waitingLaunch);

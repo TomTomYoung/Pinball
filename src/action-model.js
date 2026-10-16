@@ -1,0 +1,19 @@
+// Optional action components use the same validated Entity records as other devices.
+class ActionModel {
+    static ballKinds=['normal','power','blast','spark','pierce'];
+    static enemies=['trooper','armor','shield','phantom','batter','breaker','builder','raider'];
+    static spawnable=['enemyTrooper','enemyArmor','enemyShield','enemyPhantom','enemyBatter','enemyBreaker','enemyBuilder','enemyRaider','breakable','gravityCrate','spring'];
+    static components(c,type){
+        const M=EntityModel,out={},number=(v,d,min,max,name)=>M.num(v,d,min,max,name);
+        if(c.projectile){if(type!=='ball')M.fail('projectileはball専用です。');const p=M.object(c.projectile,['kind','power','cooldown'],'projectile');out.projectile={kind:M.choice(p.kind,'normal',this.ballKinds,'弾種'),power:number(p.power,1,.1,5,'弾威力'),cooldown:number(p.cooldown,.22,.05,5,'特殊弾間隔')};}
+        if(c.upgrade){const u=M.object(c.upgrade,['kind','scale','duration'],'upgrade');out.upgrade={kind:M.choice(u.kind,'keep',['keep',...this.ballKinds],'変換弾種'),scale:number(u.scale,1,1,3,'巨大化倍率'),duration:number(u.duration,10,.2,60,'強化時間')};}
+        if(c.enemy){if(type!=='device')M.fail('enemyはdeviceに設定してください。');const e=M.object(c.enemy,['kind','hurtBy','speed','sway','lifetime','behavior','interval','strength','radius','breach'],'enemy');out.enemy={kind:M.choice(e.kind,'trooper',this.enemies,'敵種'),hurtBy:M.choice(e.hurtBy,'both',['both','ball','flipper','none'],'撃破手段'),speed:number(e.speed,20,0,140,'前進速度'),sway:number(e.sway,0,0,100,'横揺れ'),lifetime:number(e.lifetime,35,1,120,'敵寿命'),behavior:M.choice(e.behavior,'none',['none','counter','demolish','build'],'敵行動'),interval:number(e.interval,3,.5,30,'敵行動間隔'),strength:number(e.strength,1150,100,1320,'強打速度'),radius:number(e.radius,150,20,400,'敵作用範囲'),breach:M.bool(e.breach,false,'侵入敗北')};if(!c.health)M.fail('enemyにはhealthが必要です。');}
+        if(c.spawner){const s=M.object(c.spawner,['preset','interval','delay','maxAlive','total','offset'],'spawner');out.spawner={preset:M.choice(s.preset,'enemyTrooper',this.spawnable,'出現する型'),interval:number(s.interval,5,.5,60,'出現間隔'),delay:number(s.delay,1.2,.25,5,'出現予告'),maxAlive:number(s.maxAlive,3,1,12,'同時出現数'),total:number(s.total,12,1,100,'総出現数'),offset:M.vector(s.offset,[0,75],400)};for(const k of ['maxAlive','total'])if(!Number.isInteger(out.spawner[k]))M.fail(k+'は整数です。');}
+        if(c.piston){const p=M.object(c.piston,['direction','stroke','extend','hold','retract','rest'],'piston');out.piston={direction:number(p.direction,-90,-360,360,'ピストン方向'),stroke:number(p.stroke,100,1,250,'ストローク'),extend:number(p.extend,.22,.1,5,'伸び時間'),hold:number(p.hold,.2,0,5,'保持時間'),retract:number(p.retract,.7,.1,5,'戻り時間'),rest:number(p.rest,1,0,10,'待機時間')};}
+        if(c.spring){const s=M.object(c.spring,['direction','stroke','stiffness','damping','boost','cooldown'],'spring');out.spring={direction:number(s.direction,-90,-360,360,'ばね方向'),stroke:number(s.stroke,28,2,80,'圧縮限度'),stiffness:number(s.stiffness,180,10,400,'ばね定数'),damping:number(s.damping,12,1,30,'減衰'),boost:number(s.boost,900,100,1200,'射出速度'),cooldown:number(s.cooldown,.5,.15,3,'ばね間隔')};}
+        if(c.breachZone){if(type!=='device')M.fail('侵入領域はdeviceに設定してください。');M.object(c.breachZone,[],'breachZone');out.breachZone={};}
+        if([c.enemy,c.piston,c.spring].filter(Boolean).length>1)M.fail('敵・ピストン・ばねの移動制御は同居できません。');
+        return out;
+    }
+    static layout(o){const e=o.entity,c=e?.components??{};if(c.enemy&&o.shape!=='circle')EntityModel.fail('敵の形状は円です。');if((c.piston||c.spring)&&!['device','wall'].includes(o.type))EntityModel.fail('機械の移動はdeviceまたはwallに設定してください。');if((c.piston||c.spring||c.enemy)&&(e.motion||e.attachment||e.physics?.body==='dynamic'))EntityModel.fail('機械・敵の移動と軌道／装着／自由落下は同居できません。');if(c.breachZone&&(o.shape!=='rectangle'||!o.sensor))EntityModel.fail('侵入領域は矩形センサーです。');}
+}

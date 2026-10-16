@@ -222,6 +222,8 @@ class SceneSkin {
             g.fillStyle(0x102334,.94);g.lineStyle(3,color,.9);
             if(o.radius!==undefined){g.fillCircle(0,0,o.radius);g.strokeCircle(0,0,o.radius);g.lineStyle(1,color,.45);g.strokeCircle(0,0,o.radius*.75);}
             else{g.fillRect(-o.width/2,-o.height/2,o.width,o.height);g.strokeRect(-o.width/2,-o.height/2,o.width,o.height);}
+            const enemy=o.entity?.components?.enemy;
+            if(enemy){g.lineStyle(3,color,.95);g.lineBetween(-o.radius*.65,-o.radius*.35,-o.radius*.15,-o.radius*.15);g.lineBetween(o.radius*.15,-o.radius*.15,o.radius*.65,-o.radius*.35);g.fillStyle(color,1);g.fillCircle(-o.radius*.3,-o.radius*.16,3);g.fillCircle(o.radius*.3,-o.radius*.16,3);if(enemy.kind==='armor'||enemy.kind==='shield'){g.strokeRect(-o.radius*.75,-o.radius*.75,o.radius*1.5,o.radius*1.5);}if(enemy.kind==='batter'){g.lineStyle(7,color,1);g.lineBetween(-o.radius*.8,o.radius*.6,o.radius*.8,o.radius*.3);}if(enemy.breach){g.lineStyle(4,0xff344e,1);g.lineBetween(-10,o.radius*.5,0,o.radius*.85);g.lineBetween(0,o.radius*.85,10,o.radius*.5);}}
             const f=o.entity?.components?.field;
             if(f){g.lineStyle(1,color,.25);g.strokeCircle(0,0,f.radius);const a=f.direction*Math.PI/180;g.lineStyle(3,color,.9);const x=Math.cos(a)*18,y=Math.sin(a)*18;g.lineBetween(-x,-y,x,y);g.lineBetween(x,y,x-Math.cos(a-.6)*10,y-Math.sin(a-.6)*10);g.lineBetween(x,y,x-Math.cos(a+.6)*10,y-Math.sin(a+.6)*10);}
             return true;

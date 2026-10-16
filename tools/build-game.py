@@ -23,7 +23,7 @@ assert template.count('/* PINBALL_TABLES_RUNTIME */')==1
 html=template.replace('__PINBALL_ASSET_PACK__',json.dumps(pack,ensure_ascii=False,separators=(',',':')).replace('<','\\u003c'))
 html=html.replace('/* PINBALL_MEDIA_RUNTIME */',runtime)
 html=html.replace('/* PINBALL_TABLES_RUNTIME */',tables)
-for token,file in [('PINBALL_ENTITY_MODEL','entity-model.js'),('PINBALL_ENTITY_RUNTIME','entity-runtime.js'),('PINBALL_LAB_TABLES','lab-tables.js')]:
+for token,file in [('PINBALL_ENTITY_MODEL','entity-model.js'),('PINBALL_ENTITY_RUNTIME','entity-runtime.js'),('PINBALL_LAB_TABLES','lab-tables.js'),('PINBALL_ACTION_MODEL','action-model.js'),('PINBALL_ACTION_PRESETS','action-presets.js'),('PINBALL_ACTION_RUNTIME','action-runtime.js'),('PINBALL_ACTION_TABLES','action-tables.js')]:
     assert html.count('/* '+token+' */')==1
     html=html.replace('/* '+token+' */',(ROOT/'src'/file).read_text())
 (ROOT/'index.html').write_text(html)

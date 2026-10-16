@@ -1,0 +1,21 @@
+// Presets are expanded into editable Entity definitions, never looked up during load.
+Object.assign(ENTITY_PRESETS,{
+    giantBall:{name:'弾巨大化',color:'#ffc968',sensor:true,components:{upgrade:{scale:2.4,duration:10}}},
+    powerBall:{name:'強打弾へ変換',color:'#ffae67',sensor:true,components:{upgrade:{kind:'power',duration:12}}},
+    blastBall:{name:'爆裂弾へ変換',color:'#ff687d',sensor:true,components:{upgrade:{kind:'blast',duration:12}}},
+    sparkBall:{name:'電撃弾へ変換',color:'#6ae5ff',sensor:true,components:{upgrade:{kind:'spark',duration:12}}},
+    pierceBall:{name:'貫通弾へ変換',color:'#c1a3ff',sensor:true,components:{upgrade:{kind:'pierce',duration:12}}},
+    piston:{name:'ピストン',color:'#fbc96f',shape:'rectangle',width:110,height:24,components:{piston:{direction:-90,stroke:110}}},
+    spring:{name:'ばね台',color:'#79f3b0',shape:'rectangle',width:120,height:22,components:{spring:{direction:-90,boost:950}}},
+    gravityCrate:{name:'重力クレート',color:'#bcac88',shape:'rectangle',width:54,height:54,physics:{body:'dynamic',mass:3,gravityScale:1,frictionAir:.005},components:{health:{max:30,score:120},lifetime:{seconds:25}}},
+    enemyTrooper:{name:'歩兵・両方で撃破',color:'#f48d89',components:{health:{max:20,score:200},enemy:{kind:'trooper',hurtBy:'both',speed:22}}},
+    enemyArmor:{name:'装甲兵・弾で撃破',color:'#f7bb6b',components:{health:{max:30,score:260},enemy:{kind:'armor',hurtBy:'ball',speed:16}}},
+    enemyShield:{name:'盾兵・フリッパーで撃破',color:'#80c9ff',components:{health:{max:20,score:300},enemy:{kind:'shield',hurtBy:'flipper',speed:32}}},
+    enemyPhantom:{name:'幽体・時間消滅',color:'#b5a1e9',components:{health:{max:1,score:0},enemy:{kind:'phantom',hurtBy:'none',speed:24,sway:40,lifetime:8}}},
+    enemyBatter:{name:'打者・強烈な打ち返し',color:'#ff746e',components:{health:{max:40,score:400},enemy:{kind:'batter',hurtBy:'both',speed:12,behavior:'counter',interval:1.4,strength:1200}}},
+    enemyBreaker:{name:'破砕兵・物体破壊',color:'#ff9c5f',components:{health:{max:30,score:350},enemy:{kind:'breaker',hurtBy:'both',speed:15,behavior:'demolish',interval:2.2,radius:155}}},
+    enemyBuilder:{name:'工兵・障害物増設',color:'#b4e27c',components:{health:{max:30,score:350},enemy:{kind:'builder',hurtBy:'both',speed:12,behavior:'build',interval:3.5}}},
+    enemyRaider:{name:'突撃兵・侵入で敗北',color:'#ff5578',components:{health:{max:20,score:500},enemy:{kind:'raider',hurtBy:'both',speed:38,sway:25,breach:true,lifetime:45}}},
+    enemySpawner:{name:'出現装置',color:'#bd91ff',sensor:true,components:{spawner:{preset:'enemyTrooper',interval:5,delay:1.2,maxAlive:3,total:12}}},
+    breachZone:{name:'ゲームオーバーエリア',color:'#ff3d68',shape:'rectangle',width:170,height:28,sensor:true,components:{breachZone:{}}}
+});

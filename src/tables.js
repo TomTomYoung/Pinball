@@ -115,7 +115,7 @@ class TableArcade {
     render() {
         const grid = $('table-grid'); grid.replaceChildren();
         PINBALL_TABLES.forEach((table, i) => {
-            if(this.filter==='lab'&&table.group!=='lab'||this.filter==='classic'&&table.group==='lab')return;
+            if(this.filter&&this.filter!=='all'&&(table.group??'classic')!==this.filter)return;
             const card = document.createElement('article'); card.className = 'table-card';
             card.style.setProperty('--table-accent', table.accent);
             card.innerHTML = `<div class="table-preview">${this.preview(table)}</div>

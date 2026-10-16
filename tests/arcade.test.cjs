@@ -35,10 +35,10 @@ async function drain(page) {
     await page.evaluate(() => { const g = pinballGame.play; g.ball.setPosition(400, 1100); g.update(); });
 }
 
-test('HTML単体から全20台を選択・発射し、終了から次の台へ進んでもボディとリスナーが増えない', async t => {
+test('HTML単体から全30台を選択・発射し、終了から次の台へ進んでもボディとリスナーが増えない', async t => {
     const p = await open(t);
-    assert.equal(await p.locator('[data-play]').count(), 20);
-    assert.equal(await p.locator('.table-preview svg').count(), 20);
+    assert.equal(await p.locator('[data-play]').count(), 30);
+    assert.equal(await p.locator('.table-preview svg').count(), 30);
     assert.equal(await p.evaluate(() => pinballGame.audio.context), null);
     const ids = await p.evaluate(() => PINBALL_TABLES.map(t => t.id));
     await play(p, ids[0]);
@@ -128,7 +128,7 @@ test('台別BESTは再読込で残り、保存禁止環境でも遊べる', asyn
     await q.click('#restart-button'); await q.waitForFunction(() => pinballGame.mode === 'play');
 });
 
-test('390px幅で20台と操作ボタンが収まり、左右同時タッチとキャンセルを扱える', async t => {
+test('390px幅で30台と操作ボタンが収まり、左右同時タッチとキャンセルを扱える', async t => {
     const p = await open(t, { viewport: { width: 390, height: 844 }, hasTouch: true });
     assert.equal(await p.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     await play(p, 'crossfire'); await p.click('#launch-button');

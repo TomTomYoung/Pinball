@@ -82,7 +82,7 @@ test('弾同士は実Matterで反射し、衝突除外の設定も適用でき�
  assert(g.runtime.velocity(g.ball)[0]<0);assert(g.runtime.velocity(b)[0]>0);g.shutdown();
  const h=game(a,[],{marker:{entity:{physics:{gravityScale:0,ballCollision:false}}}});h.runtime.spawnFan(h.ball,1,600,0,0,h.ball);const other=h.balls.find(b=>b!==h.ball);
  h.ball.gameObject.setPosition(370,300);other.gameObject.setPosition(430,300);h.runtime.setVelocity(h.ball,[300,0]);h.runtime.setVelocity(other,[-300,0]);frames(h,10);
- assert(h.runtime.velocity(h.ball)[0]>0);assert(h.runtime.velocity(other)[0]<0);assert.equal(h.ball.gameObject.body.collisionFilter.mask,6);h.shutdown();
+ assert(h.runtime.velocity(h.ball)[0]>0);assert(h.runtime.velocity(other)[0]<0);assert.equal(h.ball.gameObject.body.collisionFilter.mask,14);h.shutdown();
 });
 
 test('吸収後の発射待ちは残球を減らさず、3球を再生成する',()=>{

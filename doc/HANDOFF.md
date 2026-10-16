@@ -5,13 +5,13 @@
 
 ## 1. 再開地点
 
-最新の変更は、[ENTITY_MODEL.md](./ENTITY_MODEL.md)を先に記述したうえで実装した共通モデルと、19プリセット・追加10台です。合計20台を選べます。新規ソース3本をbuild-game.pyからHTMLへ内包し、従来の10台・保存・素材を維持しています。
+最新の変更は、[ACTION_MODEL.md](./ACTION_MODEL.md)に先に仕様を記述した弾・敵・機械仕掛けと追加10台です。共通Entityモデルへ合成し、合計37プリセット・30台になりました。以前の20台の配置と保存・49素材を維持しています。
 
 P-01～P-07の基礎修正と素材・音声組込みに加え、2026-10-17に10台のアーケードを追加しました。起動すると台選択になり、各台を3球制で遊べます。[SPECIFICATION.md](./SPECIFICATION.md)が現行仕様、[STATUS.md](./STATUS.md)が検証と残課題です。[OBJECT_CATALOG.md](./OBJECT_CATALOG.md)に全5型の設定・役割・当たり判定をまとめ、[object-catalog.html](./object-catalog.html)に既存素材の図入り版を用意しています。修正前の文書はhistoryに保存しており、未修正の記載を現行状態と取り違えないでください。
 
 利用者はindex.htmlを直接開きます。npmや開発サーバーの手動起動を必須にする構成へ変更しないでください。画像・音声はデータURLで内包し、実行時の外部依存はPhaser CDNだけです。package.jsonは開発時の再生成・テスト用です。backup・backup2、別リポジトリpinball2は変更対象ではありません。
 
-編集する原稿は`src/index.template.html`、`src/media.js`、`src/tables.js`、`src/entity-model.js`、`src/entity-runtime.js`、`src/lab-tables.js`です。`python tools/build-game.py`でindex.htmlを再生成し、原稿と生成物を一緒にコミットします。配布用index.htmlを直接編集すると再生成で失われます。素材を変更した場合は先に`python tools/build-asset-catalog.py`でハッシュ付き台帳を更新します。
+編集する原稿は`src/index.template.html`、`src/media.js`、`src/tables.js`、`src/entity-model.js`、`src/entity-runtime.js`、`src/lab-tables.js`、`src/action-model.js`、`src/action-presets.js`、`src/action-runtime.js`、`src/action-tables.js`です。`python tools/build-game.py`でindex.htmlを再生成し、原稿と生成物を一緒にコミットします。配布用index.htmlを直接編集すると再生成で失われます。素材を変更した場合は先に`python tools/build-asset-catalog.py`でハッシュ付き台帳を更新します。
 
 ## 2. 維持する条件
 
@@ -50,9 +50,10 @@ npm run test:browser
 npm run test:media
 npm run test:arcade
 npm run test:entities
+npm run test:action
 ```
 
-engine.test.cjsは実Phaser/Matterを使う14件、tables.test.cjsは全10台の物理・3球・ボーナス・記録14件、browser.test.cjsは実ブラウザ8件、media.test.cjsは素材・音声6件、arcade.test.cjsは全台選択・記録・同時タッチなど5件です。加えてentities.test.cjsは29件、entities-browser.test.cjsは5件です。計81件です。通常のブラウザテストは自動で一時サーバーを起動します。素材組込みテストはHTMLだけを別の一時フォルダへコピーし、file://で起動して追加ファイルが不要であることも検証します。Chrome実行ファイルを別途提供する環境ではPINBALL_BROWSER_EXECUTABLEを指定します。
+engine.test.cjsは実Phaser/Matterを使う14件、tables.test.cjsは全10台の物理・3球・ボーナス・記録14件、browser.test.cjsは実ブラウザ8件、media.test.cjsは素材・音声6件、arcade.test.cjsは全台選択・記録・同時タッチなど5件です。加えてentities.test.cjsは29件、entities-browser.test.cjsは5件です。action.test.cjsの36件、action-browser.test.cjsの4件を加え、計121件です。通常のブラウザテストは自動で一時サーバーを起動します。素材組込みテストはHTMLだけを別の一時フォルダへコピーし、file://で起動して追加ファイルが不要であることも検証します。Chrome実行ファイルを別途提供する環境ではPINBALL_BROWSER_EXECUTABLEを指定します。
 
 手動確認では以下を通します。
 
@@ -135,7 +136,7 @@ Chromium 153で、49ファイルのハッシュ、39画像のfile://表示、10�
 - カタログの図は座標・形状を説明する図で、動作するゲームではありません。物理の正本はsrc/index.template.html、スキンはsrc/media.js、10台の配置はsrc/tables.jsです。
 - 型・既定値・保存形式・スキン条件を変えたら本文と図を更新します。台の配置を変えたら、台別のオブジェクト数も照合します。素材の寸法変更時には図の支点・当たり判定も確認します。
 - 今回は次球のヒンジ再生成、押下保持中のフリッパー加点、Shape表示でのバンパー点灯の説明を実装に合わせました。ゲームの挙動は変更していません。
-- 文書・カタログだけの変更は、リンク、再生成の一致、HTML単体表示、狭幅、画像表示と当たり判定線の切替を確認します。ゲーム回帰検証（現在81件）とは区別してSTATUSへ記録します。
+- 文書・カタログだけの変更は、リンク、再生成の一致、HTML単体表示、狭幅、画像表示と当たり判定線の切替を確認します。ゲーム回帰検証（当時81件）とは区別してSTATUSへ記録します。
 
 
 ## 8. Entity拡張の引継ぎ
@@ -147,7 +148,20 @@ Chromium 153で、49ファイルのハッシュ、39画像のfile://表示、10�
 - resetRoundで生成球・保持・一時補正・入力を解除します。主球が静的化されたまま戻らないことを必ず確認してください。破壊済み障害物はそのゲーム中は復元しません。restartで全体を再生成します。
 - フリッパー伸長では支点と角度を保持して形状・ヒンジを更新します。chargeの指離しは発動、pointercancel／lostpointercaptureによる中断は取消です。通常のpointerup後に発生するlostpointercaptureを取消と取り違えないでください。
 - 生成球24、1作用8球、世代3、式深さ12、ルール32、作用キュー256、flush512、信号64の上限があります。上限超過時に無限連鎖させません。破棄処理は作用キュー上限とは別に完了させます。
-- 一般物体4、フリッパー2、球1のcollision categoryを使います。球同士を除外するmask=6でも壁への衝突が残ることを確認してください。
+- 一般物体4、フリッパー2、球1、敵8のcollision categoryを使います。球同士を除外するmask=14でも壁への衝突が残ることを確認してください。
 - 新素材は増やしていません。Device枠・場・略称・耐久・チャージはコード描画です。49素材の台帳を更新する必要はありません。
 
 次に扱う候補は、多角形／複合ボディ編集、任意の入力コマンド定義、生成球の任意prototype選択、ルールGUI、連続衝突への対策、打感・難易度の調整です。今回の実装はそれらを完了したものではありません。実装済み記法と制限はENTITY_MODELの第9節以降を参照してください。
+
+
+## 9. 弾種・敵・機械仕掛けの引継ぎ
+
+- ActionModelは追加コンポーネントと生成型の検証、action-presets.jsは追加18個、ActionRuntimeは実行状態、action-tables.jsは21～30台の定義です。ビルドではActionModel→EntityModel→追加プリセット→ActionRuntimeを定義した後にアプリを起動します。
+- 敵はkindとhurtByとbehaviorを分離します。撃破条件はdamageで統一し、爆風・電撃にもballを渡します。noneは攻撃無効ですが、寿命や場外除去は可能です。静止フリッパーでダメージを与えないでください。
+- 完成台のフリッパーはcategory=2、mask=9（球1＋敵8）。敵はcategory=8、mask=7。生成した敵にも設定します。一般物体の物理カテゴリへ戻すと、フリッパー専用敵が倒せなくなります。
+- 侵入判定はflush・removalsの後です。同じ更新で倒れた敵を失敗扱いにしません。gameOver(reason)で残球より優先して終了し、画面へ理由を表示します。
+- 生成上限32、出現予約16、工兵由来4、装置個別maxAlive12以下。敵や物体の生成は空きを調べ、予約の発生源が消えたら取消。IDは配置済みIDと照合し、参照を上書きしません。totalは生成成功数でなく、受理した予約の累計です。
+- 巨大化は半径と質量・慣性を更新して速度・回転・空気摩擦・衝突設定を復元します。捕獲中は拡大しません。拡大後の捕獲と解放でも質量倍率を保持してください。子球へ強化期限を継ぎ、次球では元へ戻します。元から大きい／小さい保存球の半径を勝手に60／3へ丸めません。
+- ActionRuntimeの生成物、予告、強化、演出を保存定義へ混ぜません。次球では生成物を消しますが、配置済み敵・障害物は進行状態を引き継ぎます。再挑戦は全体初期化です。
+- 「音・演出」から軽減可能。prefers-reduced-motionを初期値にして、光跡を停止し、最大12件の簡単な輪へ減らします。予告は残します。shutdownでGraphicsと参照を破棄してください。
+- 36件の追加物理テストで攻撃条件、巨大化・復元・質量、敵の生成と破壊、侵入、弾種、機械、10台の自然終了を検証。追加ブラウザ4件はUI、巨大化の描画、実出現、侵入終了・再挑戦と後片付けです。人による長時間の打感・難易度調整と他ブラウザ実機は残ります。

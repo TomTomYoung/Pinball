@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PINBALL ARCADE — 20の台とエディター</title>
+    <title>PINBALL ARCADE — 30の台とエディター</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
     <style>
         body {
@@ -136,7 +136,8 @@
         #audio-settings summary { cursor: pointer; padding: 12px 8px; }
         #audio-settings .audio-options { position: fixed; z-index: 201; width: 230px; box-sizing: border-box; padding: 14px; background: #122334; border: 1px solid #54718a; border-radius: 6px; }
         .audio-options label { display: block; margin: 6px 0; }
-        .audio-options input { display: block; width: 100%; accent-color: #00aaff; }
+        .audio-options input[type="checkbox"] {display:inline-block;width:auto;margin-right:8px}
+        .audio-options input:not([type="checkbox"]) { display: block; width: 100%; accent-color: #00aaff; }
         #score-display { display: none; position: absolute; top: 8px; left: 8px; width: min(240px, 45%); aspect-ratio: 10 / 3; background-position: center; background-repeat: no-repeat; background-size: contain; z-index: 5; pointer-events: none; }
         #score-display span { position: absolute; inset: 26% 10% 10%; display: flex; align-items: center; font: clamp(14px, 2vw, 23px) monospace; color: #e3f4ff; }
         .gallery-filters {display:flex;gap:8px;flex-wrap:wrap;max-width:1440px;margin:22px auto 0}
@@ -199,10 +200,10 @@
 </head>
 <body>
     <section id="table-gallery" aria-label="ピンボール台を選ぶ">
-        <header class="gallery-header"><div><div class="eyebrow">TWENTY TABLES / THREE BALLS</div>
-            <h1>PINBALL ARCADE</h1><p>定番10台と、仕掛けを試す10台。好きな台から始めましょう。</p></div>
+        <header class="gallery-header"><div><div class="eyebrow">THIRTY TABLES / THREE BALLS</div>
+            <h1>PINBALL ARCADE</h1><p>定番・仕掛け・アクション、各10台。好きな台から始めましょう。</p></div>
             <button id="gallery-edit-button" disabled>エディターを開く</button></header>
-        <div class="gallery-filters" role="group" aria-label="台の分類"><button data-filter="all" aria-pressed="true">すべて 20</button><button data-filter="classic" aria-pressed="false">定番 10</button><button data-filter="lab" aria-pressed="false">新機能の試遊 10</button></div>
+        <div class="gallery-filters" role="group" aria-label="台の分類"><button data-filter="all" aria-pressed="true">すべて 30</button><button data-filter="classic" aria-pressed="false">定番 10</button><button data-filter="lab" aria-pressed="false">新機能の試遊 10</button><button data-filter="action" aria-pressed="false">アクション 10</button></div>
         <p id="gallery-note" role="status">読み込み中…</p><div id="table-grid"></div>
     </section>
     <div id="game-container">
@@ -218,7 +219,7 @@
                 <button id="save-button">保存</button>
                 <button id="load-button">読込</button>
                 <button id="mute-button" aria-pressed="false">ミュート</button>
-                <details id="audio-settings"><summary>音量</summary><div class="audio-options">
+                <details id="audio-settings"><summary>音・演出</summary><div class="audio-options"><label><input type="checkbox" id="reduce-effects">演出を軽減</label>
                     <label>効果音<input id="sfx-volume" type="range" min="0" max="1" step="0.01" value="0.65"></label>
                     <label>BGM<input id="music-volume" type="range" min="0" max="1" step="0.01" value="0.25"></label>
                     <p class="help">操作すると音声が有効になります。</p>
@@ -506,6 +507,8 @@ class SceneSkin {
             g.fillStyle(0x102334,.94);g.lineStyle(3,color,.9);
             if(o.radius!==undefined){g.fillCircle(0,0,o.radius);g.strokeCircle(0,0,o.radius);g.lineStyle(1,color,.45);g.strokeCircle(0,0,o.radius*.75);}
             else{g.fillRect(-o.width/2,-o.height/2,o.width,o.height);g.strokeRect(-o.width/2,-o.height/2,o.width,o.height);}
+            const enemy=o.entity?.components?.enemy;
+            if(enemy){g.lineStyle(3,color,.95);g.lineBetween(-o.radius*.65,-o.radius*.35,-o.radius*.15,-o.radius*.15);g.lineBetween(o.radius*.15,-o.radius*.15,o.radius*.65,-o.radius*.35);g.fillStyle(color,1);g.fillCircle(-o.radius*.3,-o.radius*.16,3);g.fillCircle(o.radius*.3,-o.radius*.16,3);if(enemy.kind==='armor'||enemy.kind==='shield'){g.strokeRect(-o.radius*.75,-o.radius*.75,o.radius*1.5,o.radius*1.5);}if(enemy.kind==='batter'){g.lineStyle(7,color,1);g.lineBetween(-o.radius*.8,o.radius*.6,o.radius*.8,o.radius*.3);}if(enemy.breach){g.lineStyle(4,0xff344e,1);g.lineBetween(-10,o.radius*.5,0,o.radius*.85);g.lineBetween(0,o.radius*.85,10,o.radius*.5);}}
             const f=o.entity?.components?.field;
             if(f){g.lineStyle(1,color,.25);g.strokeCircle(0,0,f.radius);const a=f.direction*Math.PI/180;g.lineStyle(3,color,.9);const x=Math.cos(a)*18,y=Math.sin(a)*18;g.lineBetween(-x,-y,x,y);g.lineBetween(x,y,x-Math.cos(a-.6)*10,y-Math.sin(a-.6)*10);g.lineBetween(x,y,x-Math.cos(a+.6)*10,y-Math.sin(a+.6)*10);}
             return true;
@@ -562,10 +565,30 @@ class SceneSkin {
         const LEGACY_BACKUP_KEY = 'pinballLayoutLegacyBackup';
         const $ = id => document.getElementById(id);
 
+        // Optional action components use the same validated Entity records as other devices.
+class ActionModel {
+    static ballKinds=['normal','power','blast','spark','pierce'];
+    static enemies=['trooper','armor','shield','phantom','batter','breaker','builder','raider'];
+    static spawnable=['enemyTrooper','enemyArmor','enemyShield','enemyPhantom','enemyBatter','enemyBreaker','enemyBuilder','enemyRaider','breakable','gravityCrate','spring'];
+    static components(c,type){
+        const M=EntityModel,out={},number=(v,d,min,max,name)=>M.num(v,d,min,max,name);
+        if(c.projectile){if(type!=='ball')M.fail('projectileはball専用です。');const p=M.object(c.projectile,['kind','power','cooldown'],'projectile');out.projectile={kind:M.choice(p.kind,'normal',this.ballKinds,'弾種'),power:number(p.power,1,.1,5,'弾威力'),cooldown:number(p.cooldown,.22,.05,5,'特殊弾間隔')};}
+        if(c.upgrade){const u=M.object(c.upgrade,['kind','scale','duration'],'upgrade');out.upgrade={kind:M.choice(u.kind,'keep',['keep',...this.ballKinds],'変換弾種'),scale:number(u.scale,1,1,3,'巨大化倍率'),duration:number(u.duration,10,.2,60,'強化時間')};}
+        if(c.enemy){if(type!=='device')M.fail('enemyはdeviceに設定してください。');const e=M.object(c.enemy,['kind','hurtBy','speed','sway','lifetime','behavior','interval','strength','radius','breach'],'enemy');out.enemy={kind:M.choice(e.kind,'trooper',this.enemies,'敵種'),hurtBy:M.choice(e.hurtBy,'both',['both','ball','flipper','none'],'撃破手段'),speed:number(e.speed,20,0,140,'前進速度'),sway:number(e.sway,0,0,100,'横揺れ'),lifetime:number(e.lifetime,35,1,120,'敵寿命'),behavior:M.choice(e.behavior,'none',['none','counter','demolish','build'],'敵行動'),interval:number(e.interval,3,.5,30,'敵行動間隔'),strength:number(e.strength,1150,100,1320,'強打速度'),radius:number(e.radius,150,20,400,'敵作用範囲'),breach:M.bool(e.breach,false,'侵入敗北')};if(!c.health)M.fail('enemyにはhealthが必要です。');}
+        if(c.spawner){const s=M.object(c.spawner,['preset','interval','delay','maxAlive','total','offset'],'spawner');out.spawner={preset:M.choice(s.preset,'enemyTrooper',this.spawnable,'出現する型'),interval:number(s.interval,5,.5,60,'出現間隔'),delay:number(s.delay,1.2,.25,5,'出現予告'),maxAlive:number(s.maxAlive,3,1,12,'同時出現数'),total:number(s.total,12,1,100,'総出現数'),offset:M.vector(s.offset,[0,75],400)};for(const k of ['maxAlive','total'])if(!Number.isInteger(out.spawner[k]))M.fail(k+'は整数です。');}
+        if(c.piston){const p=M.object(c.piston,['direction','stroke','extend','hold','retract','rest'],'piston');out.piston={direction:number(p.direction,-90,-360,360,'ピストン方向'),stroke:number(p.stroke,100,1,250,'ストローク'),extend:number(p.extend,.22,.1,5,'伸び時間'),hold:number(p.hold,.2,0,5,'保持時間'),retract:number(p.retract,.7,.1,5,'戻り時間'),rest:number(p.rest,1,0,10,'待機時間')};}
+        if(c.spring){const s=M.object(c.spring,['direction','stroke','stiffness','damping','boost','cooldown'],'spring');out.spring={direction:number(s.direction,-90,-360,360,'ばね方向'),stroke:number(s.stroke,28,2,80,'圧縮限度'),stiffness:number(s.stiffness,180,10,400,'ばね定数'),damping:number(s.damping,12,1,30,'減衰'),boost:number(s.boost,900,100,1200,'射出速度'),cooldown:number(s.cooldown,.5,.15,3,'ばね間隔')};}
+        if(c.breachZone){if(type!=='device')M.fail('侵入領域はdeviceに設定してください。');M.object(c.breachZone,[],'breachZone');out.breachZone={};}
+        if([c.enemy,c.piston,c.spring].filter(Boolean).length>1)M.fail('敵・ピストン・ばねの移動制御は同居できません。');
+        return out;
+    }
+    static layout(o){const e=o.entity,c=e?.components??{};if(c.enemy&&o.shape!=='circle')EntityModel.fail('敵の形状は円です。');if((c.piston||c.spring)&&!['device','wall'].includes(o.type))EntityModel.fail('機械の移動はdeviceまたはwallに設定してください。');if((c.piston||c.spring||c.enemy)&&(e.motion||e.attachment||e.physics?.body==='dynamic'))EntityModel.fail('機械・敵の移動と軌道／装着／自由落下は同居できません。');if(c.breachZone&&(o.shape!=='rectangle'||!o.sensor))EntityModel.fail('侵入領域は矩形センサーです。');}
+}
+
         // Declarative entity definitions. No executable text is accepted from layouts.
 class EntityModel {
     static events = new Set(['spawn', 'tick', 'contact', 'enter', 'stay', 'exit', 'destroy', 'capture', 'release', 'chargeFull', 'input.down', 'input.hold', 'input.up', 'input.cancel', 'input.double', 'input.command', 'signal']);
-    static operations = new Set(['accelerate','impulse','velocity','redirect','reflect','teleport','capture','release','damage','heal','charge','score','split','fire','destroy','state','signal','modify']);
+    static operations = new Set(['accelerate','impulse','velocity','redirect','reflect','teleport','capture','release','damage','heal','charge','score','split','fire','destroy','state','signal','modify','resize','projectile','spawn','fx']);
     static expressionOps = {
         add:[2,8], sub:[2,2], mul:[2,8], div:[2,2], mod:[2,2], pow:[2,2], min:[1,8], max:[1,8], clamp:[3,3],
         abs:[1,1], sqrt:[1,1], sin:[1,1], cos:[1,1], atan2:[2,2], eq:[2,2], ne:[2,2], gt:[2,2], gte:[2,2], lt:[2,2], lte:[2,2],
@@ -679,7 +702,8 @@ class EntityModel {
             out.links={}; for(const [k,v] of Object.entries(value.links)) { this.identifier(k); if(['__proto__','constructor','prototype'].includes(k))this.fail('リンク名が不正です。');out.links[k]=this.identifier(v); }
         }
         if (value.physics) {
-            const p=this.object(value.physics,['mass','gravityScale','frictionAir','ballCollision'],'physics');out.physics={};
+            const p=this.object(value.physics,['body','mass','gravityScale','frictionAir','ballCollision'],'physics');out.physics={};
+            if(p.body!==undefined)out.physics.body=this.choice(p.body,'static',['static','dynamic'],'物理ボディ');
             if(p.mass!==undefined)out.physics.mass=this.num(p.mass,1,.01,1000,'質量');
             if(p.gravityScale!==undefined)out.physics.gravityScale=this.num(p.gravityScale,1,-5,5,'重力倍率');
             if(p.frictionAir!==undefined)out.physics.frictionAir=this.num(p.frictionAir,.001,0,1,'空気摩擦');
@@ -706,7 +730,7 @@ class EntityModel {
             if(new Set(out.regions.map(r=>r.id)).size!==out.regions.length)this.fail('領域IDが重複しています。');
         }
         if(value.components) {
-            const c=this.object(value.components,['health','attack','charge','field','capture','warp','split','absorber','flipper','lifetime'],'components');out.components={};
+            const c=this.object(value.components,['health','attack','charge','field','capture','warp','split','absorber','flipper','lifetime','projectile','upgrade','enemy','spawner','piston','spring','breachZone'],'components');out.components={};
             const numeric=(name,fields)=>{if(!c[name])return;this.object(c[name],Object.keys(fields),name);const d={};for(const[k,v]of Object.entries(fields))d[k]=this.num(c[name][k],...v,k);out.components[name]=d;};
             numeric('health',{max:[30,1,1e6],armor:[0,0,1e6],score:[100,0,1e6]});
             numeric('attack',{damage:[10,0,1e6]});numeric('charge',{maximum:[100,1,1e6],rate:[25,0,10000],initial:[0,0,1e6]});numeric('lifetime',{seconds:[12,.1,300]});
@@ -739,6 +763,7 @@ class EntityModel {
             if(['capture','warp','split','absorber'].filter(k=>out.components[k]).length>1)this.fail('捕獲・ワープ・分裂・吸収は同じ物体に重複できません。');
             if(out.components.charge&&out.components.charge.initial>out.components.charge.maximum)this.fail('初期チャージが上限を超えています。');
         }
+        if(out.components)Object.assign(out.components,ActionModel.components(value.components,type));
         if(value.state) {
             this.object(value.state,Object.keys(value.state).filter(k=>/^[a-zA-Z][a-zA-Z0-9_]*$/.test(k)&&!['constructor','prototype'].includes(k)),'state');
             if(Object.keys(value.state).length>32)this.fail('状態変数は32個までです。');out.state={};
@@ -760,7 +785,7 @@ class EntityModel {
         return out;
     }
     static effect(e) {
-        this.object(e,['op','target','value','vector','angle','space','count','spread','speed','consume','destination','key','name','duration','source','operation','stack','cost','resource'],'作用');
+        this.object(e,['op','target','value','vector','angle','space','count','spread','speed','consume','destination','key','name','duration','source','operation','stack','cost','resource','preset','kind'],'作用');
         if(!this.operations.has(e.op))this.fail('未対応作用: '+e.op);
         const out={op:e.op,target:this.str(e.target,'other','作用対象',80)};
         if(!/^(self|other|owner|nearby|link:[a-zA-Z0-9_-]+)$/.test(out.target))this.fail('作用対象が不正です。');
@@ -772,6 +797,9 @@ class EntityModel {
         if(e.operation!==undefined)out.operation=this.choice(e.operation,'add',['add','multiply','set','min','max'],'補正');
         if(e.stack!==undefined)out.stack=this.choice(e.stack,'refresh',['refresh','reject','independent'],'重ね方');
         if(e.op==='modify'&&!['speed','attack','drive','gravity'].includes(e.key))this.fail('補正対象はspeed / attack / drive / gravityです。');
+        if(e.preset!==undefined)out.preset=this.choice(e.preset,'breakable',ActionModel.spawnable,'生成する型');
+        if(e.kind!==undefined)out.kind=this.choice(e.kind,'normal',ActionModel.ballKinds,'弾種');
+        if(e.op==='spawn'&&!out.preset)this.fail('spawnにはpresetが必要です。');
         if(e.op==='state'&&!e.key)this.fail('stateにはkeyが必要です。');
         return out;
     }
@@ -783,7 +811,7 @@ class EntityModel {
             if(ids.has(id))this.fail('IDが重複しています: '+id);ids.set(id,o);
         });
         for(const o of objects)if(o.entity){
-            const e=o.entity;
+            const e=o.entity;ActionModel.layout(o);
             if(e.components?.warp&&!e.components.warp.target)this.fail('ワープ先のIDが必要です。');
             const effects=(e.rules??[]).flatMap(r=>r.effects);
             for(const effect of effects)if(effect.target.startsWith('link:')&&!e.links?.[effect.target.slice(5)])this.fail('作用のリンクが存在しません: '+effect.target);
@@ -819,9 +847,126 @@ const ENTITY_PRESETS = {
 };
 function entityPresetRecord(key, x=400, y=400, id='feature') {
     const p=ENTITY_PRESETS[key];if(!p)throw new Error('Unknown preset');
-    const entity={version:1,id,prototype:key};for(const k of ['components','motion','rules'])if(p[k])entity[k]=EntityModel.clone(p[k]);
+    const entity={version:1,id,prototype:key};for(const k of ['components','motion','rules','physics'])if(p[k])entity[k]=EntityModel.clone(p[k]);
     if(p.type==='flipper')return {type:'flipper',x,y,width:120,height:24,isLeft:true,restAngle:22,flipAngle:-38,name:p.name,entity};
     return {type:'device',x,y,width:p.width??64,height:p.height??64,radius:32,shape:p.shape??'circle',sensor:p.sensor??false,name:p.name,color:p.color,restitution:.8,entity};
+}
+
+        // Presets are expanded into editable Entity definitions, never looked up during load.
+Object.assign(ENTITY_PRESETS,{
+    giantBall:{name:'弾巨大化',color:'#ffc968',sensor:true,components:{upgrade:{scale:2.4,duration:10}}},
+    powerBall:{name:'強打弾へ変換',color:'#ffae67',sensor:true,components:{upgrade:{kind:'power',duration:12}}},
+    blastBall:{name:'爆裂弾へ変換',color:'#ff687d',sensor:true,components:{upgrade:{kind:'blast',duration:12}}},
+    sparkBall:{name:'電撃弾へ変換',color:'#6ae5ff',sensor:true,components:{upgrade:{kind:'spark',duration:12}}},
+    pierceBall:{name:'貫通弾へ変換',color:'#c1a3ff',sensor:true,components:{upgrade:{kind:'pierce',duration:12}}},
+    piston:{name:'ピストン',color:'#fbc96f',shape:'rectangle',width:110,height:24,components:{piston:{direction:-90,stroke:110}}},
+    spring:{name:'ばね台',color:'#79f3b0',shape:'rectangle',width:120,height:22,components:{spring:{direction:-90,boost:950}}},
+    gravityCrate:{name:'重力クレート',color:'#bcac88',shape:'rectangle',width:54,height:54,physics:{body:'dynamic',mass:3,gravityScale:1,frictionAir:.005},components:{health:{max:30,score:120},lifetime:{seconds:25}}},
+    enemyTrooper:{name:'歩兵・両方で撃破',color:'#f48d89',components:{health:{max:20,score:200},enemy:{kind:'trooper',hurtBy:'both',speed:22}}},
+    enemyArmor:{name:'装甲兵・弾で撃破',color:'#f7bb6b',components:{health:{max:30,score:260},enemy:{kind:'armor',hurtBy:'ball',speed:16}}},
+    enemyShield:{name:'盾兵・フリッパーで撃破',color:'#80c9ff',components:{health:{max:20,score:300},enemy:{kind:'shield',hurtBy:'flipper',speed:32}}},
+    enemyPhantom:{name:'幽体・時間消滅',color:'#b5a1e9',components:{health:{max:1,score:0},enemy:{kind:'phantom',hurtBy:'none',speed:24,sway:40,lifetime:8}}},
+    enemyBatter:{name:'打者・強烈な打ち返し',color:'#ff746e',components:{health:{max:40,score:400},enemy:{kind:'batter',hurtBy:'both',speed:12,behavior:'counter',interval:1.4,strength:1200}}},
+    enemyBreaker:{name:'破砕兵・物体破壊',color:'#ff9c5f',components:{health:{max:30,score:350},enemy:{kind:'breaker',hurtBy:'both',speed:15,behavior:'demolish',interval:2.2,radius:155}}},
+    enemyBuilder:{name:'工兵・障害物増設',color:'#b4e27c',components:{health:{max:30,score:350},enemy:{kind:'builder',hurtBy:'both',speed:12,behavior:'build',interval:3.5}}},
+    enemyRaider:{name:'突撃兵・侵入で敗北',color:'#ff5578',components:{health:{max:20,score:500},enemy:{kind:'raider',hurtBy:'both',speed:38,sway:25,breach:true,lifetime:45}}},
+    enemySpawner:{name:'出現装置',color:'#bd91ff',sensor:true,components:{spawner:{preset:'enemyTrooper',interval:5,delay:1.2,maxAlive:3,total:12}}},
+    breachZone:{name:'ゲームオーバーエリア',color:'#ff3d68',shape:'rectangle',width:170,height:28,sensor:true,components:{breachZone:{}}}
+});
+
+        // Action state is ephemeral. It never mutates authored layout definitions.
+class ActionRuntime {
+    static MAX_GENERATED=32;
+    constructor(runtime){this.rt=runtime;this.scene=runtime.scene;this.pending=[];this.effects=[];this.trails=new Map();this.serial=0;this.drawClock=0;this.graphics=this.scene.add.graphics?.().setDepth(60)??null;}
+    register(o){const r=o.runtime,c=o.entity?.components??{};r.originalRadius=o.radius;r.originalColor=o.color;r.originalMass=this.rt.body(o)?.mass;r.ballKind=c.projectile?.kind??'normal';r.grownUntil=0;r.kindUntil=0;r.nextEnemyAction=this.rt.time+(c.enemy?.interval??1);r.nextSpawn=this.rt.time+.5;r.spawnedCount=0;r.springX=0;r.springV=0;r.spawnOwner=null;
+        if(o.type==='ball'&&r.ballKind!=='normal'){r.originalColor=o.color='#'+this.color(r.ballKind).toString(16).padStart(6,'0');o.gameObject.setFillStyle(this.color(r.ballKind));this.scene.skin?.refresh(o);}
+        if(c.enemy){const b=this.rt.body(o);b.collisionFilter.category=8;b.collisionFilter.mask=1|2|4;}
+    }
+    kind(ball){return ball?.runtime?.ballKind??'normal';}
+    color(kind){return {normal:0xd8f4ff,power:0xffbd68,blast:0xff6579,spark:0x73eaff,pierce:0xc3a1ff}[kind]??0xffffff;}
+    emit(kind,x,y,color=0xffc175,size=50,points=[]){if(this.effects.length>=80)this.effects.shift();this.effects.push({kind,x,y,color,size,points,born:this.rt.time,duration:kind==='lightning'?.24:kind==='spawn'?.7:.5});}
+    attackScale(ball){const c=ball.entity?.components?.projectile;return (this.kind(ball)==='power'?2.6:this.kind(ball)==='pierce'?1.5:1)*(c?.power??1);}
+    canDamage(target,source,channel){const e=target?.entity?.components?.enemy;if(!e)return true;const method=channel??(source?.type==='ball'?'ball':source?.type==='flipper'?'flipper':'environment');return e.hurtBy==='both'?['ball','flipper'].includes(method):e.hurtBy===method;}
+    resizeBall(ball,radius){const rt=this.rt,r=ball.runtime,b=rt.body(ball);if(!r?.active||!b||r.heldBy)return false;radius=Math.max(.5,Math.min(Math.max(60,r.originalRadius),radius));const p={...rt.position(ball)};
+        let pos=null;if(radius<=ball.radius||rt.isClear(p.x,p.y,radius,new Set([ball])))pos=p;
+        else for(const distance of [radius*.5,radius,2*radius]){for(let i=0;i<12;i++){const v=rt.vectorAt(i*30,distance);if(rt.isClear(p.x+v[0],p.y+v[1],radius,new Set([ball]))){pos={x:p.x+v[0],y:p.y+v[1]};break;}}if(pos)break;}
+        if(!pos)return false;
+        const velocity=rt.velocity(ball),angle=b.angle,omega=b.angularVelocity,filter={...b.collisionFilter},frictionAir=b.frictionAir;ball.radius=radius;ball.updateProperties();ball.gameObject.setPosition(pos.x,pos.y);rt.scene.matter.body.setAngle(rt.body(ball),angle);rt.scene.matter.body.setAngularVelocity(rt.body(ball),omega);Object.assign(rt.body(ball).collisionFilter,filter);rt.body(ball).frictionAir=frictionAir;rt.scene.matter.body.setMass(rt.body(ball),r.originalMass*(radius/r.originalRadius)**2);rt.setVelocity(ball,velocity);this.scene.skin?.refresh(ball);return true;
+    }
+    upgrade(ball,u){if(ball.type!=='ball'||!ball.runtime?.active||ball.runtime.heldBy)return false;const r=ball.runtime;if(u.scale>1&&this.resizeBall(ball,r.originalRadius*u.scale)){r.grownUntil=this.rt.time+u.duration;this.emit('burst',ball.gameObject.x,ball.gameObject.y,0xffcd70,80);}
+        if(u.kind&&u.kind!=='keep'){r.ballKind=u.kind;r.kindUntil=this.rt.time+u.duration;ball.color='#'+this.color(u.kind).toString(16).padStart(6,'0');ball.gameObject.setFillStyle(this.color(u.kind));this.scene.skin?.refresh(ball);this.emit('ring',ball.gameObject.x,ball.gameObject.y,this.color(u.kind),65);}return true;
+    }
+    beforeStep(){const rt=this.rt,t=rt.time;
+        for(const[o,r]of [...rt.records]){if(!r.active)continue;const c=o.entity?.components??{};
+            if(o.type==='ball'){if(r.grownUntil&&t>=r.grownUntil&&this.resizeBall(o,r.originalRadius))r.grownUntil=0;if(r.kindUntil&&t>=r.kindUntil){r.kindUntil=0;r.ballKind=c.projectile?.kind??'normal';o.color=r.originalColor;o.gameObject.setFillStyle(parseInt(o.color.slice(1),16));this.scene.skin?.refresh(o);}continue;}
+            if(c.enemy){if(t-r.born>=c.enemy.lifetime){rt.enqueue(()=>rt.destroy(o,null,true));continue;}const e=c.enemy,p=rt.position(o);rt.moveBody(o,r.base.x+e.sway*Math.sin((t-r.born)*2),p.y+e.speed*rt.dt,rt.body(o).angle);
+                if(t>=r.nextEnemyAction&&['build','demolish'].includes(e.behavior)){r.nextEnemyAction=t+e.interval;rt.enqueue(()=>this.enemyAct(o));}
+            }
+            if(c.spawner&&t>=r.nextSpawn){r.nextSpawn=t+c.spawner.interval;const s=c.spawner,alive=[...rt.records.values()].filter(x=>x.active&&x.spawnOwner===r.id).length+this.pending.filter(x=>x.owner===r.id).length;if(r.spawnedCount<s.total&&alive<s.maxAlive){const p=rt.position(o);if(this.requestSpawn(s.preset,p.x+s.offset[0],p.y+s.offset[1],o,s.delay))r.spawnedCount++;}}
+            if(c.piston){const m=c.piston,period=m.extend+m.hold+m.retract+m.rest,phase=(t-r.born)%period;let q=0;if(phase<m.extend)q=phase/m.extend;else if(phase<m.extend+m.hold)q=1;else if(phase<m.extend+m.hold+m.retract)q=1-(phase-m.extend-m.hold)/m.retract;const v=rt.vectorAt(m.direction+r.base.angle,m.stroke*q);rt.moveBody(o,r.base.x+v[0],r.base.y+v[1],r.base.angle*Math.PI/180);}
+            if(c.spring){const s=c.spring;r.springV+=(-s.stiffness*r.springX-s.damping*r.springV)*rt.dt;r.springX=Math.max(0,Math.min(s.stroke,r.springX+r.springV*rt.dt));if(r.springX===0&&r.springV<0)r.springV=0;const v=rt.vectorAt(s.direction+r.base.angle,-r.springX);rt.moveBody(o,r.base.x+v[0],r.base.y+v[1],r.base.angle*Math.PI/180);}
+            if((c.enemy||o.entity?.physics?.body==='dynamic')&&rt.position(o).y>this.scene.board.height+100)rt.enqueue(()=>rt.destroy(o,null,true));
+        }
+    }
+    contact(a,b,pair,event){const rt=this.rt,c=a.entity?.components??{},ar=a.runtime,br=b.runtime;
+        if(b.type==='ball'){
+            if(c.upgrade&&rt.time>=(br.upgradeAt??0)){br.upgradeAt=rt.time+.4;rt.enqueue(()=>this.upgrade(b,c.upgrade));}
+            if(c.spring&&rt.time>=(ar.springAt??0)){ar.springAt=rt.time+c.spring.cooldown;pair.isSensor=true;const s=c.spring;ar.springX=Math.min(s.stroke,8+event.relativeSpeed*.035);ar.springV=0;const speed=Math.min(1250,s.boost+ar.springX*5);rt.enqueue(()=>{if(br.active&&!br.heldBy){rt.setVelocity(b,rt.vectorAt(s.direction+rt.angle(a),speed));this.emit('burst',a.gameObject.x,a.gameObject.y,0x86ffc2,85);}});}
+            if(c.enemy?.behavior==='counter'&&rt.time>=(ar.counterAt??0)){ar.counterAt=rt.time+c.enemy.interval;pair.isSensor=true;rt.enqueue(()=>{if(!br.active||br.heldBy)return;const angle=45+(rt.random()*90);rt.setVelocity(b,rt.vectorAt(angle,c.enemy.strength));this.emit('burst',rt.position(a).x,rt.position(a).y,0xff576d,115);});}
+            if(c.health&&!a.isBoundary&&a.type!=='flipper'){
+                const kind=this.kind(b),can=this.canDamage(a,b,'ball');
+                if(!can)this.emit('shield',rt.position(a).x,rt.position(a).y,0xa4d7ff,50);
+                if(kind==='pierce'&&can){pair.isSensor=true;const v=rt.velocity(b);rt.enqueue(()=>{if(br.active&&!br.heldBy)rt.setVelocity(b,v);});}
+                if(kind!=='normal'&&rt.time>=(br.specialAt??0)){br.specialAt=rt.time+(b.entity?.components?.projectile?.cooldown??.22);rt.enqueue(()=>this.projectileHit(b,a,kind));}
+            }
+        }
+    }
+    projectileHit(ball,hit,kind){const rt=this.rt;if(!ball.runtime?.active)return;const p={...rt.position(hit)},c=this.color(kind);this.emit(kind==='blast'?'blast':'burst',p.x,p.y,c,kind==='blast'?155:65);
+        if(kind==='power'){const body=rt.body(hit);if(body&&!body.isStatic){const v=rt.velocity(ball);rt.setVelocity(hit,[v[0]*.7,v[1]*.7]);}}
+        const targets=[...rt.records.keys()].filter(o=>o!==hit&&o!==ball&&o.runtime.active&&!o.isBoundary&&o.type!=='flipper'&&o.entity?.components?.health&&this.canDamage(o,ball,'ball'));
+        if(kind==='blast')for(const o of targets){const d=Math.hypot(rt.position(o).x-p.x,rt.position(o).y-p.y);if(d<=155){rt.damage(o,18,ball,'ball');const body=rt.body(o);if(body&&!body.isStatic){const v=[rt.position(o).x-p.x,rt.position(o).y-p.y],length=Math.hypot(...v)||1;rt.setVelocity(o,v.map(x=>x/length*500));}}}
+        if(kind==='spark'){const points=[[p.x,p.y]],remaining=new Set(targets);let current=p;for(let i=0;i<4;i++){const candidate=[...remaining].sort((a,b)=>Math.hypot(rt.position(a).x-current.x,rt.position(a).y-current.y)-Math.hypot(rt.position(b).x-current.x,rt.position(b).y-current.y))[0];if(!candidate||Math.hypot(rt.position(candidate).x-current.x,rt.position(candidate).y-current.y)>180)break;current={...rt.position(candidate)};points.push([current.x,current.y]);remaining.delete(candidate);rt.damage(candidate,12,ball,'ball');}this.emit('lightning',p.x,p.y,c,80,points);}
+    }
+    flipperHit(flipper,ball){if(!flipper.isFlipping)return;const rt=this.rt,r=ball.runtime;this.emit('burst',rt.position(ball).x,rt.position(ball).y,this.color(this.kind(ball)),50+50*(flipper.runtime.releasedCharge??0));
+        if(this.kind(ball)!=='normal')rt.enqueue(()=>{if(!r.active||r.heldBy)return;const speed=Math.min(1250,Math.max(900,Math.hypot(...rt.velocity(ball))*1.1));rt.setVelocity(ball,rt.vectorAt(flipper.isLeft?-65:-115,speed));});
+    }
+    enemyAct(o){const rt=this.rt,e=o.entity?.components?.enemy;if(!o.runtime.active||!e)return;const p=rt.position(o);
+        if(e.behavior==='demolish'){const targets=[...rt.records.keys()].filter(x=>x!==o&&x.runtime.active&&!x.isBoundary&&!['ball','flipper'].includes(x.type)&&!x.entity?.components?.enemy&&x.entity?.components?.health&&Math.hypot(rt.position(x).x-p.x,rt.position(x).y-p.y)<=e.radius);for(const x of targets.slice(0,3))rt.damage(x,20,o,'environment');this.emit('blast',p.x,p.y,0xffa060,e.radius);}
+        if(e.behavior==='build'){const alive=[...rt.records.values()].filter(x=>x.active&&x.spawnOwner===o.runtime.id).length+this.pending.filter(x=>x.owner===o.runtime.id).length;if(alive<4)this.requestSpawn('breakable',p.x+(o.runtime.spawnedCount++%2?95:-95),p.y+60,o,.8);}
+    }
+    requestSpawn(preset,x,y,source,delay=1){if(!ActionModel.spawnable.includes(preset)||this.pending.length>=16||[...this.rt.records.values()].filter(r=>r.generated).length+this.pending.length>=ActionRuntime.MAX_GENERATED)return false;
+        this.pending.push({preset,x,y,owner:source?.runtime?.id??'',source,due:this.rt.time+delay,start:this.rt.time});return true;
+    }
+    spawnObject(item){const rt=this.rt;if(item.source&&!item.source.runtime?.active)return null;let id;do{id='action-'+(++this.serial);}while(rt.byId.has(id));let record=entityPresetRecord(item.preset,item.x,item.y,id);record.entity.components??={};record.entity.components.lifetime??={seconds:record.entity.components.enemy?.lifetime??18};record=LayoutCodec.object(record);
+        const radius=record.shape==='circle'?record.radius:Math.hypot(record.width,record.height)/2;let pos=null;
+        for(const d of [0,60,110,160]){for(let i=0;i<(d?8:1);i++){const v=rt.vectorAt(i*45,d);if(rt.isClear(item.x+v[0],item.y+v[1],radius)){pos={x:item.x+v[0],y:item.y+v[1]};break;}}if(pos)break;}
+        if(!pos)return null;record.x=pos.x;record.y=pos.y;const object=GameObject.deserialize(this.scene,record);object.gameObject.body.collisionFilter.category=4;this.scene.objects.push(object);const r=rt.register(object);r.generated=true;r.spawnOwner=item.owner;rt.emit(object,'spawn',null,{});this.emit('spawn',pos.x,pos.y,parseInt(object.color.slice(1),16),radius+40);return object;
+    }
+    afterStep(){const rt=this.rt;const due=this.pending.filter(p=>p.due<=rt.time);this.pending=this.pending.filter(p=>p.due>rt.time);for(const item of due)this.spawnObject(item);
+        // Damage and destruction queues have already completed. A defeated raider cannot breach.
+        const zones=[...rt.records.keys()].filter(o=>o.runtime.active&&o.entity?.components?.breachZone);
+        for(const[o,r]of rt.records){if(!r.active||!o.entity?.components?.enemy?.breach)continue;const p=rt.position(o),radius=o.radius??o.width/2;
+            for(const z of zones){const q=rt.position(z),a=-rt.angle(z)*Math.PI/180,dx=p.x-q.x,dy=p.y-q.y,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a);if(Math.hypot(Math.max(Math.abs(lx)-z.width/2,0),Math.max(Math.abs(ly)-z.height/2,0))<=radius){this.scene.gameOver('敵がゲームオーバーエリアへ侵入しました');return;}}
+        }
+        for(const ball of rt.liveBalls()){if(ball.runtime.heldBy)continue;const p=rt.position(ball),trail=this.trails.get(ball)??[];trail.push([p.x,p.y,rt.time]);while(trail.length>16||trail.length&&rt.time-trail[0][2]>.25)trail.shift();this.trails.set(ball,trail);}
+        for(const ball of this.trails.keys())if(!ball.runtime.active||!ball.gameObject)this.trails.delete(ball);
+    }
+    destroyed(o,quiet){if(!quiet){const p=this.rt.position(o);this.emit(o.entity?.components?.enemy?'blast':'burst',p.x,p.y,parseInt(o.color.slice(1),16),o.entity?.components?.enemy?95:55);}this.trails.delete(o);this.pending=this.pending.filter(x=>x.source!==o);}
+    resetRound(){this.pending=[];this.effects=[];this.trails.clear();const rt=this.rt;for(const[o,r]of [...rt.records])if(r.generated)rt.destroy(o,null,true);rt.flush();const ball=this.scene.ball;if(ball?.runtime){this.resizeBall(ball,ball.runtime.originalRadius);ball.runtime.ballKind=ball.entity?.components?.projectile?.kind??'normal';ball.runtime.kindUntil=ball.runtime.grownUntil=0;ball.color=ball.runtime.originalColor;ball.gameObject.setFillStyle(parseInt(ball.color.slice(1),16));this.scene.skin?.refresh(ball);}for(const r of rt.records.values()){r.nextSpawn=rt.time+.5;r.springX=0;r.springV=0;}}
+    draw(){const g=this.graphics;if(!g)return;const rt=this.rt,t=rt.time;g.clear();this.effects=this.effects.filter(e=>t-e.born<e.duration);if(this.scene.isGameOver)return;const reduced=!!this.scene.app.reduceEffects;
+        if(!reduced)for(const[b,trail]of this.trails){if(!b.runtime.active||b.runtime.heldBy)continue;const color=this.color(this.kind(b));for(let i=1;i<trail.length;i++){g.lineStyle(Math.max(1,b.radius*.65*i/trail.length),color,.5*i/trail.length);g.lineBetween(trail[i-1][0],trail[i-1][1],trail[i][0],trail[i][1]);}}
+        for(const item of this.pending){const q=Math.max(0,Math.min(1,(t-item.start)/(item.due-item.start)));g.lineStyle(2,0xffe39f,.4+.5*q);g.strokeCircle(item.x,item.y,40-15*q);g.lineBetween(item.x-15,item.y,item.x+15,item.y);g.lineBetween(item.x,item.y-15,item.x,item.y+15);}
+        for(const[o,r]of rt.records){if(!r.active)continue;const p=rt.position(o),c=o.entity?.components??{};
+            if(c.breachZone){g.lineStyle(3,0xff3c67,.6+.3*Math.sin(t*5));const angle=rt.angle(o)*Math.PI/180,points=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([x,y])=>({x:p.x+x*o.width/2*Math.cos(angle)-y*o.height/2*Math.sin(angle),y:p.y+x*o.width/2*Math.sin(angle)+y*o.height/2*Math.cos(angle)}));for(let i=0;i<4;i++){const a=points[i],b=points[(i+1)%4];g.lineBetween(a.x,a.y,b.x,b.y);}}
+            if(c.spring||c.piston){const s=c.spring??c.piston,d=rt.vectorAt(s.direction+r.base.angle,1),base={x:r.base.x-d[0]*60,y:r.base.y-d[1]*60};g.lineStyle(3,parseInt(o.color.slice(1),16),.8);let prev=base;for(let i=1;i<=10;i++){const f=i/10,wiggle=i===10?0:(i%2?8:-8),next={x:base.x+(p.x-base.x)*f-d[1]*wiggle,y:base.y+(p.y-base.y)*f+d[0]*wiggle};g.lineBetween(prev.x,prev.y,next.x,next.y);prev=next;}}
+            if(c.enemy){const armed=c.enemy.behavior==='counter'&&t>=(r.counterAt??0),rad=(o.radius??30)+6;g.lineStyle(armed?3:1,armed?0xff4e67:0xffffff,.7);g.strokeCircle(p.x,p.y,rad);}
+        }
+        for(const e of this.effects.slice(reduced?-12:-80)){const q=(t-e.born)/e.duration,alpha=1-q,r=e.size*(.2+.8*q);g.lineStyle(reduced?2:3,e.color,alpha);g.strokeCircle(e.x,e.y,r);if(reduced)continue;
+            if(e.kind==='lightning'){g.lineStyle(4,e.color,alpha);for(let i=1;i<e.points.length;i++){const a=e.points[i-1],b=e.points[i],mx=(a[0]+b[0])/2+12*Math.sin(i*9),my=(a[1]+b[1])/2+10*Math.cos(i*5);g.lineBetween(a[0],a[1],mx,my);g.lineBetween(mx,my,b[0],b[1]);}}
+            else {if(e.kind==='blast'){g.lineStyle(8,e.color,.25*alpha);g.strokeCircle(e.x,e.y,r*.65);}for(let i=0;i<12;i++){const a=i*Math.PI/6+e.born,v={x:Math.cos(a),y:Math.sin(a)};g.lineStyle(2+(i%3),e.color,alpha);g.lineBetween(e.x+v.x*r*.55,e.y+v.y*r*.55,e.x+v.x*r,e.y+v.y*r);}}
+        }
+    }
+    shutdown(){this.pending=[];this.effects=[];this.trails.clear();this.graphics?.destroy();this.graphics=null;}
 }
 
         // Runtime-only state and effects. Layout definitions remain immutable during play.
@@ -831,7 +976,7 @@ class EntityRuntime {
         this.scene=scene; this.time=0; this.dt=1/60; this.serial=0; this.contactSerial=0; this.frame=0;
         this.records=new Map();this.byId=new Map();this.queue=[];this.removals=[];this.signals=[];this.pendingBursts=[];
         this.input={left:false,right:false,action:false};this.lastTap={};this.sequence=[];this.cancelled=false;
-        this.seed=(scene.layoutData.seed??12345)>>>0;this.trace=[];this.eventBudget=0;this.round=0;
+        this.seed=(scene.layoutData.seed??12345)>>>0;this.trace=[];this.eventBudget=0;this.round=0;this.action=new ActionRuntime(this);
         for(const o of scene.objects)this.register(o);
         for(const o of [...this.records.keys()])this.emit(o,'spawn',null,{});
         this.flush();
@@ -847,14 +992,14 @@ class EntityRuntime {
             r.graphics=this.scene.add.graphics().setDepth(30);
             if(o.type==='device')r.label=this.scene.add.text(o.x,o.y,o.deviceLabel(),{fontSize:'12px',fontFamily:'Arial',color:'#f0fbff',fontStyle:'bold'}).setOrigin(.5).setDepth(31);
         }
-        return r;
+        this.action?.register(o);return r;
     }
     applyPhysics(o) {
         const body=o.gameObject?.body,p=o.entity?.physics;
         if(!body||!p)return;
-        if(p.mass!==undefined&&!body.isStatic)this.scene.matter.body.setMass(body,p.mass);
+        if(p.mass!==undefined&&!body.isStatic)this.scene.matter.body.setMass(body,p.mass*(o.type==='ball'&&o.runtime?.originalRadius?(o.radius/o.runtime.originalRadius)**2:1));
         if(p.frictionAir!==undefined)body.frictionAir=p.frictionAir;
-        if(o.type==='ball')body.collisionFilter.mask=p.ballCollision===false?6:0xffffffff;
+        if(o.type==='ball')body.collisionFilter.mask=p.ballCollision===false?14:0xffffffff;
     }
     liveBalls() { return this.scene.balls.filter(b=>b.runtime?.active&&b.gameObject); }
     hasPendingBalls() { return this.pendingBursts.length>0; }
@@ -938,7 +1083,7 @@ class EntityRuntime {
         if(this.scene.waitingLaunch||this.scene.isGameOver)return;
         this.dt=Math.min(.05,Math.max(.001,delta/1000));this.time+=this.dt;this.frame++;this.eventBudget=0;
         for(const r of this.records.values()){r.claimed=false;for(const[k,t]of r.timers)if(t<this.time)r.timers.delete(k);while(r.counts.size>256)r.counts.delete(r.counts.keys().next().value);r.modifiers=r.modifiers.filter(m=>m.until>this.time);}
-        this.readInput();
+        this.readInput();this.action.beforeStep();
         const signals=this.signals.splice(0,64);for(const s of signals)if(s.target.runtime?.active)this.emit(s.target,'signal',s.source,{name:s.name,value:s.value});
         for(const[o,r]of [...this.records]){
             if(!r.active)continue;const c=r.spec.components??{},body=this.body(o);
@@ -1008,7 +1153,7 @@ class EntityRuntime {
         if(down&&!r.down)r.swing++;
         if(f.charge){
             if(down){r.chargeLevel=Math.min(1,r.chargeLevel+this.dt/f.chargeTime);r.flipperState='charging';o.reset();}
-            else if(r.down){r.releasedCharge=r.chargeLevel;r.chargeLevel=0;r.flipperState='swing';r.swingUntil=this.time+.22+r.releasedCharge*.15;r.swing++;}
+            else if(r.down){r.releasedCharge=r.chargeLevel;r.chargeLevel=0;r.flipperState='swing';r.swingUntil=this.time+.22+r.releasedCharge*.15;r.swing++;const p=this.position(o);this.action.emit('burst',p.x,p.y,0xffcd70,35+75*r.releasedCharge);}
             if(r.flipperState==='swing'){if(this.time<r.swingUntil)o.flip();else{r.flipperState='returning';o.reset();}}
             else if(!down)o.reset();
             o.driveMultiplier=o.isFlipping?1+(f.boost-1)*r.releasedCharge:1;
@@ -1026,6 +1171,7 @@ class EntityRuntime {
         this.scene.matter.body.setAngularVelocity(next,velocity);o.gameObject.rotation=angle;o.gameObject.x=next.position.x;o.gameObject.y=next.position.y;
     }
     flipperHit(o,ball) {
+        this.action.flipperHit(o,ball);
         const r=o.runtime,f=r?.spec.components?.flipper;if(!f||!o.isFlipping)return;
         if(f.charge)ball.runtime.attackBoost=1+3*r.releasedCharge;
         if(f.scatter&&this.time>=(r.scatterAt??0)&&ball.runtime.generation<1){
@@ -1047,8 +1193,10 @@ class EntityRuntime {
                 suppress();a.runtime.splitAt=this.time+c.split.cooldown;this.enqueue(()=>this.split(b,c.split,a));
             }
         }
+        this.action.contact(a,b,pair,event);
         if(this.emit(a,'contact',b,event))pair.isSensor=true;
-        const attack=b.entity?.components?.attack?.damage??(b.type==='ball'?10:0);
+        let attack=b.entity?.components?.attack?.damage??(b.type==='ball'?10:b.type==='flipper'&&b.isFlipping?20*(1+2*(br.releasedCharge??0)):0);
+        if(b.type==='flipper'&&!b.isFlipping)attack=0;if(b.type==='ball')attack*=this.action.attackScale(b);
         if(c.health&&attack>0)this.enqueue(()=>this.damage(a,this.modifier(b,'attack',attack)*(br.attackBoost??1),b));
         if(a.type==='flipper'&&b.type==='ball')this.flipperHit(a,b);
     }
@@ -1121,20 +1269,20 @@ class EntityRuntime {
             const direction=angle+(count===1?0:(i/(count-1)-.5)*spread),radius=parent?.radius??9,probe={radius},pos=this.safePoint(source,probe,direction);
             if(!pos)continue;
             const inherited=parent?.entity?.components??{},entity={version:1,id:'spawn-'+(++this.serial),roles:['projectile'],owner:source.runtime?.id,
-                physics:{...EntityModel.clone(parent?.entity?.physics??{}),ballCollision:parent?.entity?.physics?.ballCollision??true},tags:EntityModel.clone(parent?.entity?.tags??[]),components:{lifetime:{seconds:12},attack:{damage:inherited.attack?.damage??10},...(inherited.health?{health:EntityModel.clone(inherited.health)}:{})}};
+                physics:{...EntityModel.clone(parent?.entity?.physics??{}),ballCollision:parent?.entity?.physics?.ballCollision??true},tags:EntityModel.clone(parent?.entity?.tags??[]),components:{...(inherited.projectile?{projectile:EntityModel.clone(inherited.projectile)}:{}),lifetime:{seconds:12},attack:{damage:inherited.attack?.damage??10},...(inherited.health?{health:EntityModel.clone(inherited.health)}:{})}};
             const ball=new Ball(this.scene,pos.x,pos.y,radius,{color:parent?.color??'#ffffff',restitution:parent?.restitution??.8,friction:parent?.friction??.005,isBallPositionMarker:false,entity});
-            this.scene.objects.push(ball);this.scene.balls.push(ball);const r=this.register(ball,(parent?.runtime.generation??0)+1);r.warpUntil=this.time+.25;r.captureUntil=this.time+.2;
+            this.scene.objects.push(ball);this.scene.balls.push(ball);const r=this.register(ball,(parent?.runtime.generation??0)+1);if(parent?.runtime){r.ballKind=parent.runtime.ballKind;r.kindUntil=parent.runtime.kindUntil;r.originalColor=parent.runtime.originalColor;if(parent.runtime.grownUntil){r.originalRadius=parent.runtime.originalRadius;r.originalMass=parent.runtime.originalMass;r.grownUntil=parent.runtime.grownUntil;}}r.warpUntil=this.time+.25;r.captureUntil=this.time+.2;
             this.setVelocity(ball,this.vectorAt(direction,Math.min(1200,Math.max(60,speed))));this.emit(ball,'spawn',null,{});created++;
         }
         return created;
     }
-    damage(o,amount,source) {
-        const r=o.runtime,c=o.entity?.components?.health;if(!r?.active||!c||!Number.isFinite(amount))return;
+    damage(o,amount,source,channel) {
+        const r=o.runtime,c=o.entity?.components?.health;if(!r?.active||!c||!Number.isFinite(amount)||!this.action.canDamage(o,source,channel))return;
         r.health=Math.max(0,r.health-Math.max(0,amount-c.armor));if(r.health===0){this.scene.addScore(c.score);this.destroy(o,source);}
     }
     destroy(o,source=null,quiet=false) {
         const r=o?.runtime;if(!r?.active)return;
-        if(!quiet)this.emit(o,'destroy',source,{});
+        this.action.destroyed(o,quiet);if(!quiet)this.emit(o,'destroy',source,{});
         for(const held of [...r.held]){if(!this.release(o,held)){held.runtime.heldBy=null;this.destroy(held);}}
         if(r.heldBy)r.heldBy.runtime.held=r.heldBy.runtime.held.filter(b=>b!==o);
         r.heldBy=null;r.active=false;r.graphics?.destroy();r.label?.destroy();r.graphics=r.label=null;
@@ -1155,6 +1303,10 @@ class EntityRuntime {
         const r=target.runtime,b=this.body(target),number=(v,otherwise=0)=>typeof v==='number'&&Number.isFinite(v)?v:otherwise;
         const vector=()=>{let v=Array.isArray(e.vector)?e.vector:[0,0];if(!v.every(Number.isFinite))return[0,0];const angle=e.space==='self'?this.angle(self):e.space==='projectile'?Math.atan2(...this.velocity(target).slice().reverse())*180/Math.PI:0,a=angle*Math.PI/180;return[v[0]*Math.cos(a)-v[1]*Math.sin(a),v[0]*Math.sin(a)+v[1]*Math.cos(a)];};
         switch(e.op){
+            case 'resize':if(target.type==='ball')this.action.upgrade(target,{kind:'keep',scale:Math.max(1,Math.min(3,number(e.value,2))),duration:e.duration??10});break;
+            case 'projectile':if(target.type==='ball')this.action.upgrade(target,{kind:e.kind??'normal',scale:1,duration:e.duration??10});break;
+            case 'spawn':{const p=this.position(target);this.action.requestSpawn(e.preset,p.x,p.y,target,.8);break;}
+            case 'fx':{const p=this.position(target);this.action.emit('burst',p.x,p.y,0x7deaff,Math.min(200,Math.max(10,number(e.value,70))));break;}
             case 'accelerate': this.addAcceleration(target,vector());break;
             case 'impulse': {const v=this.velocity(target),imp=vector(),mass=b?.mass??1;this.setVelocity(target,[v[0]+imp[0]/mass,v[1]+imp[1]/mass]);break;}
             case 'velocity':this.setVelocity(target,vector());break;
@@ -1186,7 +1338,7 @@ class EntityRuntime {
     }
     afterStep() {
         if(this.scene.waitingLaunch||this.scene.isGameOver)return;
-        this.flush();
+        this.flush();this.action.afterStep();if(this.scene.isGameOver)return;
         for(const burst of this.pendingBursts.filter(x=>x.due<=this.time))if(burst.source.runtime?.active){const c=burst.config;this.spawnFan(burst.source,c.count,c.speed,c.direction+this.angle(burst.source),c.spread);}
         this.pendingBursts=this.pendingBursts.filter(x=>x.due>this.time);
         for(const ball of this.liveBalls()){
@@ -1195,6 +1347,7 @@ class EntityRuntime {
         }
     }
     draw() {
+        this.action.draw();
         for(const[o,r]of this.records){if(!r.active)continue;const g=r.graphics;if(!g)continue;const p=this.position(o),c=r.spec.components??{};g.clear();
             if(c.field){g.lineStyle(1,parseInt(o.color.slice(1),16),.35);g.strokeCircle(p.x,p.y,c.field.radius);const v=this.vectorAt(c.field.direction+this.angle(o),24);g.lineBetween(p.x-v[0],p.y-v[1],p.x+v[0],p.y+v[1]);}
             const width=o.type==='flipper'?o.width:Math.max(50,o.width),y=p.y-(o.radius??o.height/2)-13;
@@ -1212,9 +1365,10 @@ class EntityRuntime {
         const ball=this.scene.ball,r=ball.runtime;if(this.body(ball).isStatic)this.scene.matter.body.setStatic(this.body(ball),false);
         r.heldBy=null;r.active=true;r.generation=0;r.born=this.time;r.health=ball.entity?.components?.health?.max??null;r.attackBoost=1;r.warpUntil=0;r.captureUntil=0;r.chargeLevel=0;
         this.body(ball).collisionFilter.mask=0xffffffff;ball.gameObject.setVisible(true);this.scene.skin?.views.get(ball)?.container.setVisible(true);this.scene.skin?.refresh(ball);this.applyPhysics(ball);
+        this.action.resetRound();
         for(const[o,state]of this.records)if(o.type==='flipper'&&Math.abs(o.width-state.base.width)>.01)this.resizeFlipper(o,state.base.width);
     }
-    shutdown() {this.queue=[];this.removals=[];this.signals=[];this.pendingBursts=[];for(const r of this.records.values()){r.graphics?.destroy();r.label?.destroy();}this.records.clear();this.byId.clear();}
+    shutdown() {this.action.shutdown();this.queue=[];this.removals=[];this.signals=[];this.pendingBursts=[];for(const r of this.records.values()){r.graphics?.destroy();r.label?.destroy();}this.records.clear();this.byId.clear();}
 }
 
         // The same schema-1 layouts drive the gallery previews and physics.
@@ -1334,7 +1488,7 @@ class TableArcade {
     render() {
         const grid = $('table-grid'); grid.replaceChildren();
         PINBALL_TABLES.forEach((table, i) => {
-            if(this.filter==='lab'&&table.group!=='lab'||this.filter==='classic'&&table.group==='lab')return;
+            if(this.filter&&this.filter!=='all'&&(table.group??'classic')!==this.filter)return;
             const card = document.createElement('article'); card.className = 'table-card';
             card.style.setProperty('--table-accent', table.accent);
             card.innerHTML = `<div class="table-preview">${this.preview(table)}</div>
@@ -1430,6 +1584,39 @@ const PINBALL_LAB_TABLES = (() => {
     ];
 })();
 PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
+
+        // Action tables preserve all twenty earlier layouts unchanged.
+const PINBALL_ACTION_TABLES=(()=>{
+    const device=(key,x,y,id,change={})=>{const o=entityPresetRecord(key,x,y,id);for(const k of ['radius','width','height','angle','color','sensor'])if(change[k]!==undefined)o[k]=change[k];if(change.components)for(const[k,v]of Object.entries(change.components))o.entity.components={...o.entity.components,[k]:{...o.entity.components?.[k],...v}};return o;};
+    const target=(x,y,id,hp=20)=>device('breakable',x,y,id,{width:80,components:{health:{max:hp,score:150}}});
+    const bumper=(x,y)=>({type:'bumper',x,y,radius:28,score:160,restitution:1.2});
+    const enemy=(key,x,y,id,change={})=>device(key,x,y,id,{radius:27,...change});
+    const make=(id,name,accent,description,tip,objects,opts={})=>({id,name,accent,description,tip,control:opts.control??'敵の印：両=弾とフリッパー／弾=弾のみ／振=振りのみ／時=時間消滅',group:'action',level:'アクション',target:opts.target??4000,launch:{x:0,y:-7},
+        layout:{schemaVersion:2,seed:20261017,board:{width:800,height:1000},objects:[...EntityModel.clone(PINBALL_LAB_TABLES[0].layout.objects.slice(0,6)).map((o,i)=>o.type==='flipper'&&opts.charge?{...o,entity:{id:'paddle-'+i,components:{flipper:{charge:true,chargeTime:.8,boost:2.3}}}}:o),...objects,{type:'ball',x:400,y:110,radius:10,isBallPositionMarker:true,entity:{id:'round-ball',components:{attack:{damage:10},...(opts.kind?{projectile:{kind:opts.kind}}:{})}}}]}});
+    return[
+        make('action-giant','メガ・ブレイカー','#ffc968','巨大な球で敵とブロックをまとめて崩す台。','GROWに触れると10秒間、直径が2.4倍。POWERで強打弾になります。',[
+            device('giantBall',400,260,'grow'),device('powerBall',400,570,'power'),...[[240,400],[400,410],[560,400],[300,650],[500,650]].map(([x,y],i)=>target(x,y,'brick-'+i,25)),bumper(240,230),bumper(560,230),enemy('enemyTrooper',300,520,'trooper',{components:{enemy:{speed:0}}})]),
+        make('action-blast','ブラスト・チェーン','#ff687d','爆裂弾の範囲攻撃で群れを崩します。','赤い弾は接触点から155の範囲に爆風。密集した敵を狙います。',[
+            device('blastBall',400,250,'blast'),...[[290,420],[400,430],[510,420],[340,550],[460,550]].map(([x,y],i)=>enemy('enemyTrooper',x,y,'crowd-'+i,{components:{enemy:{speed:0},health:{max:20}}})),target(240,610,'side-a'),target(560,610,'side-b'),bumper(210,230),bumper(590,230)],{kind:'blast'}),
+        make('action-spark','サンダー・リンク','#6ae5ff','電撃が敵を渡り、最大4体へ連鎖する台。','水色の弾で敵の列の端を撃ちます。電撃も「弾で倒せる敵」にだけ有効です。',[
+            device('sparkBall',400,245,'spark'),...[[220,370],[350,390],[480,410],[610,430],[490,540]].map(([x,y],i)=>enemy('enemyTrooper',x,y,'link-'+i,{components:{enemy:{speed:0},health:{max:20}}})),device('enemySpawner',180,190,'reinforce',{components:{spawner:{preset:'enemyTrooper',interval:6,maxAlive:3,total:8}}}),bumper(280,620),bumper(550,620)],{kind:'spark'}),
+        make('action-pierce','ドリル・レーン','#c1a3ff','貫通弾が障害物を抜き、連続して当たる台。','紫の弾は壊せる敵とブロックを通過します。外周・通常レールは反射します。',[
+            device('pierceBall',400,240,'pierce'),...[350,440,530,620].map((y,i)=>target(400,y,'stack-'+i,15)),enemy('enemyArmor',260,390,'armor-a',{components:{enemy:{speed:0}}}),enemy('enemyArmor',540,470,'armor-b',{components:{enemy:{speed:0}}}),bumper(240,600),bumper(560,600)],{kind:'pierce'}),
+        make('action-enemies','エネミー・セレクター','#f48d89','攻撃手段によって倒せる敵が変わります。','両は両方、弾は弾のみ、振は振ったフリッパーのみ。時は8秒で消えます。',[
+            enemy('enemyTrooper',300,350,'both'),enemy('enemyArmor',510,330,'ball-only'),enemy('enemyShield',315,660,'paddle-only'),enemy('enemyPhantom',550,520,'timed'),device('enemySpawner',230,300,'gate',{components:{spawner:{preset:'enemyShield',interval:6,total:4,offset:[80,350]}}}),bumper(400,460)],{charge:true,target:2500}),
+        make('action-counter','カウンター・デュエル','#ff746e','敵が球を高速で打ち返す決闘台。','赤い外周リングの打者は強打準備中。チャージスウィングで打ち返します。',[
+            enemy('enemyBatter',400,330,'batter',{radius:38,components:{enemy:{speed:0},health:{max:90,score:800}}}),device('powerBall',400,200,'power'),enemy('enemyBatter',240,500,'batter-left',{components:{enemy:{speed:0}}}),enemy('enemyBatter',560,500,'batter-right',{components:{enemy:{speed:0}}}),bumper(320,650),bumper(480,650)],{charge:true,kind:'power'}),
+        make('action-construction','ビルド＆ブレイク','#b4e27c','工兵が障害物を増やし、破砕兵が盤面を壊します。','工兵を倒して増設を止め、破砕兵を利用して道を開けます。出現前の十字が予告です。',[
+            enemy('enemyBuilder',280,330,'builder',{components:{enemy:{speed:0}}}),enemy('enemyBreaker',520,460,'breaker',{components:{enemy:{speed:0}}}),target(440,390,'wall-a',40),target(600,390,'wall-b',40),target(490,580,'wall-c',40),device('enemySpawner',400,180,'gate',{components:{spawner:{preset:'gravityCrate',interval:5,total:6,offset:[0,95]}}}),device('blastBall',230,600,'blast'),bumper(630,600)]),
+        make('action-defense','ラスト・ディフェンス','#ff5578','突撃兵を止め、下端の侵入エリアを守る台。','DANGERへ突撃兵が入ると残球があっても終了。弾でもフリッパーでも倒せます。',[
+            device('breachZone',400,940,'danger',{width:230}),enemy('enemyRaider',400,570,'raider'),device('enemySpawner',400,210,'gate',{components:{spawner:{preset:'enemyRaider',interval:7,maxAlive:3,total:8}}}),device('powerBall',220,480,'power'),bumper(250,330),bumper(550,330)],{charge:true,target:5000}),
+        make('action-machines','スプリング・ファクトリー','#79f3b0','ばね・ピストン・重力で動く物体の試遊台。','SPRINGは圧縮して跳ね上げ、PISTONは伸び・保持・戻り・待機を繰り返します。',[
+            device('piston',250,440,'piston',{components:{piston:{direction:-55,stroke:105}}}),device('spring',430,630,'spring',{angle:-10}),device('gravityCrate',330,240,'crate-a'),device('gravityCrate',550,260,'crate-b'),device('enemySpawner',620,190,'crate-gate',{components:{spawner:{preset:'gravityCrate',interval:7,total:5,offset:[-30,90]}}}),bumper(400,360),bumper(560,520)]),
+        make('action-onslaught','オーバードライブ','#ffd76e','強化弾・巨大化・出現する敵をまとめて遊ぶ台。','左右を押して溜め、離して振ります。巨大な爆裂弾で群れを一掃し、侵入を防ぎます。',[
+            device('giantBall',400,240,'grow'),device('blastBall',260,510,'blast'),device('sparkBall',550,510,'spark'),device('spring',400,680,'spring'),device('breachZone',400,950,'danger',{width:210}),device('enemySpawner',240,180,'left-gate',{components:{spawner:{preset:'enemyTrooper',interval:5,maxAlive:4,total:12,offset:[40,100]}}}),device('enemySpawner',560,190,'right-gate',{components:{spawner:{preset:'enemyRaider',interval:8,maxAlive:2,total:8,offset:[-30,90]}}}),bumper(400,410)],{charge:true,kind:'blast',target:8000})
+    ];
+})();
+PINBALL_TABLES.push(...PINBALL_ACTION_TABLES);
 
 
         // 保存・UI・プレイ開始で共通の検証を通す。現在の盤面は検証後に置換する。
@@ -1634,6 +1821,8 @@ PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
                 $('restart-button').addEventListener('click', () => this.restartGame());
                 $('edit-button').addEventListener('click', () => this.stopGame());
                 $('audio-settings').addEventListener('toggle', () => this.fitToolbar());
+                $('reduce-effects').checked=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;this.reduceEffects=$('reduce-effects').checked;
+                $('reduce-effects').addEventListener('change',()=>{this.reduceEffects=$('reduce-effects').checked;});
                 $('mute-button').addEventListener('click', () => {
                     this.audio.setMuted(!this.audio.muted);
                     $('mute-button').setAttribute('aria-pressed', String(this.audio.muted));
@@ -1818,7 +2007,7 @@ PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
                 // 派生クラスの全属性が確定してからcreateGameObjectを呼ぶ。
             }
 
-            bodyOptions() { return { isStatic: this.entity?.motion?.mode!=='force', restitution: this.restitution }; }
+            bodyOptions() { return { isStatic: !(this.entity?.motion?.mode==='force'||this.entity?.physics?.body==='dynamic'), restitution: this.restitution }; }
             shape() { return { type: 'rectangle', width: this.width, height: this.height }; }
             bodyPosition() { return { x: this.x, y: this.y }; }
             displayAngle() { return this.angle; }
@@ -1917,7 +2106,7 @@ PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
                 this.isStatic = options.isStatic ?? true;
                 this.createGameObject();
             }
-            bodyOptions() { return { isStatic: this.entity?.motion?.mode==='force'?false:this.isStatic, restitution: this.restitution }; }
+            bodyOptions() { return { isStatic: this.entity?.motion?.mode==='force'||this.entity?.physics?.body==='dynamic'?false:this.isStatic, restitution: this.restitution }; }
             serialize() { return { ...super.serialize(), isStatic: this.isStatic }; }
         }
 
@@ -1960,7 +2149,7 @@ PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
             bodyOptions() {
                 return { isStatic: !this.scene.isPlaying, ignoreGravity: true, frictionAir: 0.05,
                     density: 0.01, restitution: this.restitution,
-                    ...(this.scene.table ? { collisionFilter: { category: 2, mask: 1 } } : {}) };
+                    ...(this.scene.table ? { collisionFilter: { category: 2, mask: 9 } } : {}) };
             }
             displayAngle() { return this.restAngle; }
             bodyPosition() {
@@ -2036,8 +2225,8 @@ PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
             }
             createGameObject(){this.gameObject=this.radius!==undefined?this.scene.add.circle(this.x,this.y,this.radius,0xffffff):this.scene.add.rectangle(this.x,this.y,this.width,this.height,0xffffff);this.finishCreation();}
             shape(){return this.radius!==undefined?{type:'circle',radius:this.radius}:super.shape();}
-            bodyOptions(){return{isStatic:this.entity?.motion?.mode!=='force',isSensor:this.sensor,restitution:this.restitution};}
-            deviceLabel(){const p=this.entity?.prototype;return({accelerate:'BOOST',redirect:'TURN',brake:'SLOW',reflector:'REFLECT',magnet:'PULL',repeller:'PUSH',vortex:'VORTEX',capture:'HOLD',warp:'WARP',breakable:'BREAK',destroyer:'VOID',splitter:'SPLIT',absorber:'RECYCLE',launcher:'CHARGE',moving:'MOVE',rotating:'ROTATE'})[p]??'DEVICE';}
+            bodyOptions(){return{isStatic:!(this.entity?.motion?.mode==='force'||this.entity?.physics?.body==='dynamic'),isSensor:this.sensor,restitution:this.restitution};}
+            deviceLabel(){const e=this.entity?.components?.enemy;if(e)return({both:'両',ball:'弾',flipper:'振',none:'時'})[e.hurtBy??'both'];const p=this.entity?.prototype;return({accelerate:'BOOST',redirect:'TURN',brake:'SLOW',reflector:'REFLECT',magnet:'PULL',repeller:'PUSH',vortex:'VORTEX',capture:'HOLD',warp:'WARP',breakable:'BREAK',destroyer:'VOID',splitter:'SPLIT',absorber:'RECYCLE',launcher:'CHARGE',moving:'MOVE',rotating:'ROTATE',giantBall:'GROW',powerBall:'POWER',blastBall:'BLAST',sparkBall:'SPARK',pierceBall:'PIERCE',piston:'PISTON',spring:'SPRING',gravityCrate:'MASS',enemySpawner:'SPAWN',breachZone:'DANGER'})[p]??'DEVICE';}
             serialize(){return{...super.serialize(),shape:this.deviceShape,sensor:this.sensor,...(this.radius!==undefined?{radius:this.radius}:{})};}
         }
 
@@ -2464,7 +2653,7 @@ PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
                     this.ballsLeft--;
                     if(this.table&&this.ballsLeft>0){this.app.audio?.cue('drain');this.prepareBall();}else this.gameOver();
                 }
-                if(this.table?.group==='lab'){
+                if(this.table?.group==='lab'||this.table?.group==='action'){
                     const charged=this.objects.filter(o=>o.runtime?.active&&o.entity?.components?.charge).map(o=>Math.round(o.runtime.charge)).join(' / ');
                     $('feature-progress').textContent=`プレイ中 ${this.runtime.liveBalls().length}球${charged?'　充填 '+charged:''}　${this.table.control??''}`;
                 }else $('feature-progress').textContent='';
@@ -2498,9 +2687,9 @@ PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
                 if (this.table && this.score >= this.table.target) this.targetAwarded = true;
                 this.app.updateRound?.(this);
             }
-            gameOver() {
+            gameOver(reason='') {
                 if (this.isGameOver) return;
-                this.isGameOver = true;
+                this.isGameOver = true;this.gameOverReason=reason;this.runtime.action.effects=[];this.runtime.action.pending=[];this.runtime.action.trails.clear();
                 for(const ball of this.balls)ball.setVelocity(0,0);this.runtime?.cancelInput();
                 this.matter.world.pause();
                 this.input.keyboard.resetKeys();
@@ -2508,7 +2697,7 @@ PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
                 this.skin?.clearEffects();
                 this.app.audio?.endGame();
                 this.app.updateRound?.(this);
-                this.app.showGameOver(this.score);
+                this.app.showGameOver(this.score);if(reason)$('round-result').textContent=reason+'。 '+$('round-result').textContent;
             }
             shutdown() {
                 this.matter.world?.off('beforeupdate', this.beforePhysicsStep, this);

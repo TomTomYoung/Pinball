@@ -28,7 +28,7 @@ function loadApp() {
     const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
     const script = html.split('<script>')[1].split('</script>')[0];
     vm.runInContext(script.slice(0, script.indexOf('const pinballGame = new PinballGame();')) +
-        '\nglobalThis.classes = { LayoutCodec, GameObject, Wall, Bumper, Flipper, Ball, EditorScene, GameScene, PinballGame, createBoundaries, PINBALL_TABLES, PINBALL_LAB_TABLES, TableArcade, Device, EntityModel, EntityRuntime, ENTITY_PRESETS, entityPresetRecord };', context);
+        '\nglobalThis.classes = { LayoutCodec, GameObject, Wall, Bumper, Flipper, Ball, EditorScene, GameScene, PinballGame, createBoundaries, PINBALL_TABLES, PINBALL_LAB_TABLES, TableArcade, Device, EntityModel, EntityRuntime, ENTITY_PRESETS, entityPresetRecord, ActionModel, ActionRuntime, PINBALL_ACTION_TABLES };', context);
     const app = { mode: 'edit', board: { width: 800, height: 1000 },
         notify: (text, error) => messages.push({ text, error }),
         setBoard(board) { this.board = { ...board }; }, setMode(mode) { this.mode = mode; },

@@ -1,7 +1,7 @@
 // Declarative entity definitions. No executable text is accepted from layouts.
 class EntityModel {
     static events = new Set(['spawn', 'tick', 'contact', 'enter', 'stay', 'exit', 'destroy', 'capture', 'release', 'chargeFull', 'input.down', 'input.hold', 'input.up', 'input.cancel', 'input.double', 'input.command', 'signal']);
-    static operations = new Set(['accelerate','impulse','velocity','redirect','reflect','teleport','capture','release','damage','heal','charge','score','split','fire','destroy','state','signal','modify']);
+    static operations = new Set(['accelerate','impulse','velocity','redirect','reflect','teleport','capture','release','damage','heal','charge','score','split','fire','destroy','state','signal','modify','resize','projectile','spawn','fx']);
     static expressionOps = {
         add:[2,8], sub:[2,2], mul:[2,8], div:[2,2], mod:[2,2], pow:[2,2], min:[1,8], max:[1,8], clamp:[3,3],
         abs:[1,1], sqrt:[1,1], sin:[1,1], cos:[1,1], atan2:[2,2], eq:[2,2], ne:[2,2], gt:[2,2], gte:[2,2], lt:[2,2], lte:[2,2],
@@ -115,7 +115,8 @@ class EntityModel {
             out.links={}; for(const [k,v] of Object.entries(value.links)) { this.identifier(k); if(['__proto__','constructor','prototype'].includes(k))this.fail('リンク名が不正です。');out.links[k]=this.identifier(v); }
         }
         if (value.physics) {
-            const p=this.object(value.physics,['mass','gravityScale','frictionAir','ballCollision'],'physics');out.physics={};
+            const p=this.object(value.physics,['body','mass','gravityScale','frictionAir','ballCollision'],'physics');out.physics={};
+            if(p.body!==undefined)out.physics.body=this.choice(p.body,'static',['static','dynamic'],'物理ボディ');
             if(p.mass!==undefined)out.physics.mass=this.num(p.mass,1,.01,1000,'質量');
             if(p.gravityScale!==undefined)out.physics.gravityScale=this.num(p.gravityScale,1,-5,5,'重力倍率');
             if(p.frictionAir!==undefined)out.physics.frictionAir=this.num(p.frictionAir,.001,0,1,'空気摩擦');
@@ -142,7 +143,7 @@ class EntityModel {
             if(new Set(out.regions.map(r=>r.id)).size!==out.regions.length)this.fail('領域IDが重複しています。');
         }
         if(value.components) {
-            const c=this.object(value.components,['health','attack','charge','field','capture','warp','split','absorber','flipper','lifetime'],'components');out.components={};
+            const c=this.object(value.components,['health','attack','charge','field','capture','warp','split','absorber','flipper','lifetime','projectile','upgrade','enemy','spawner','piston','spring','breachZone'],'components');out.components={};
             const numeric=(name,fields)=>{if(!c[name])return;this.object(c[name],Object.keys(fields),name);const d={};for(const[k,v]of Object.entries(fields))d[k]=this.num(c[name][k],...v,k);out.components[name]=d;};
             numeric('health',{max:[30,1,1e6],armor:[0,0,1e6],score:[100,0,1e6]});
             numeric('attack',{damage:[10,0,1e6]});numeric('charge',{maximum:[100,1,1e6],rate:[25,0,10000],initial:[0,0,1e6]});numeric('lifetime',{seconds:[12,.1,300]});
@@ -175,6 +176,7 @@ class EntityModel {
             if(['capture','warp','split','absorber'].filter(k=>out.components[k]).length>1)this.fail('捕獲・ワープ・分裂・吸収は同じ物体に重複できません。');
             if(out.components.charge&&out.components.charge.initial>out.components.charge.maximum)this.fail('初期チャージが上限を超えています。');
         }
+        if(out.components)Object.assign(out.components,ActionModel.components(value.components,type));
         if(value.state) {
             this.object(value.state,Object.keys(value.state).filter(k=>/^[a-zA-Z][a-zA-Z0-9_]*$/.test(k)&&!['constructor','prototype'].includes(k)),'state');
             if(Object.keys(value.state).length>32)this.fail('状態変数は32個までです。');out.state={};
@@ -196,7 +198,7 @@ class EntityModel {
         return out;
     }
     static effect(e) {
-        this.object(e,['op','target','value','vector','angle','space','count','spread','speed','consume','destination','key','name','duration','source','operation','stack','cost','resource'],'作用');
+        this.object(e,['op','target','value','vector','angle','space','count','spread','speed','consume','destination','key','name','duration','source','operation','stack','cost','resource','preset','kind'],'作用');
         if(!this.operations.has(e.op))this.fail('未対応作用: '+e.op);
         const out={op:e.op,target:this.str(e.target,'other','作用対象',80)};
         if(!/^(self|other|owner|nearby|link:[a-zA-Z0-9_-]+)$/.test(out.target))this.fail('作用対象が不正です。');
@@ -208,6 +210,9 @@ class EntityModel {
         if(e.operation!==undefined)out.operation=this.choice(e.operation,'add',['add','multiply','set','min','max'],'補正');
         if(e.stack!==undefined)out.stack=this.choice(e.stack,'refresh',['refresh','reject','independent'],'重ね方');
         if(e.op==='modify'&&!['speed','attack','drive','gravity'].includes(e.key))this.fail('補正対象はspeed / attack / drive / gravityです。');
+        if(e.preset!==undefined)out.preset=this.choice(e.preset,'breakable',ActionModel.spawnable,'生成する型');
+        if(e.kind!==undefined)out.kind=this.choice(e.kind,'normal',ActionModel.ballKinds,'弾種');
+        if(e.op==='spawn'&&!out.preset)this.fail('spawnにはpresetが必要です。');
         if(e.op==='state'&&!e.key)this.fail('stateにはkeyが必要です。');
         return out;
     }
@@ -219,7 +224,7 @@ class EntityModel {
             if(ids.has(id))this.fail('IDが重複しています: '+id);ids.set(id,o);
         });
         for(const o of objects)if(o.entity){
-            const e=o.entity;
+            const e=o.entity;ActionModel.layout(o);
             if(e.components?.warp&&!e.components.warp.target)this.fail('ワープ先のIDが必要です。');
             const effects=(e.rules??[]).flatMap(r=>r.effects);
             for(const effect of effects)if(effect.target.startsWith('link:')&&!e.links?.[effect.target.slice(5)])this.fail('作用のリンクが存在しません: '+effect.target);
@@ -255,7 +260,7 @@ const ENTITY_PRESETS = {
 };
 function entityPresetRecord(key, x=400, y=400, id='feature') {
     const p=ENTITY_PRESETS[key];if(!p)throw new Error('Unknown preset');
-    const entity={version:1,id,prototype:key};for(const k of ['components','motion','rules'])if(p[k])entity[k]=EntityModel.clone(p[k]);
+    const entity={version:1,id,prototype:key};for(const k of ['components','motion','rules','physics'])if(p[k])entity[k]=EntityModel.clone(p[k]);
     if(p.type==='flipper')return {type:'flipper',x,y,width:120,height:24,isLeft:true,restAngle:22,flipAngle:-38,name:p.name,entity};
     return {type:'device',x,y,width:p.width??64,height:p.height??64,radius:32,shape:p.shape??'circle',sensor:p.sensor??false,name:p.name,color:p.color,restitution:.8,entity};
 }

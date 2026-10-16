@@ -85,8 +85,9 @@ test('実シーンの再プレイ4回と編集復帰、キーボード左右操�
             await page.waitForFunction(() => pinballGame.play.objects.find(o => o.type === 'flipper' && !o.isLeft).gameObject.angle > 30);
             await page.keyboard.up('/');
         }
-        await page.evaluate(() => { const g = pinballGame.play; g.addScore(70); g.ball.gameObject.setPosition(400, 1200); g.update(); g.addScore(50); });
-        assert.equal(await page.locator('#final-score').textContent(), '70');
+        // キー操作中の実衝突による正当な得点を含め、終了後の50点だけが拒否されることを検証する。
+        const expected = await page.evaluate(() => { const g = pinballGame.play; g.matter.world.pause(); const total=g.score+70; g.addScore(70); g.ball.gameObject.setPosition(400, 1200); g.update(); g.addScore(50); return total; });
+        assert.equal(await page.locator('#final-score').textContent(), String(expected));
         assert.equal(await page.evaluate(() => pinballGame.play.matter.world.enabled), false);
         if (i < 3) await page.click('#restart-button');
     }
