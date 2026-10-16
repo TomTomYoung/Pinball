@@ -1,0 +1,13 @@
+{
+  "name": "pinball-editor",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "test": "node --test tests/engine.test.cjs",
+    "test:browser": "node --test tests/browser.test.cjs"
+  },
+  "devDependencies": {
+    "phaser": "3.60.0",
+    "playwright": "1.62.1"
+  }
+}

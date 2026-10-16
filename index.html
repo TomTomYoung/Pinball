@@ -76,6 +76,9 @@
         
         .property-input {
             flex: 1;
+            min-width: 0;
+            width: 55%;
+            box-sizing: border-box;
             background-color: #444;
             border: 1px solid #555;
             color: #fff;
@@ -116,11 +119,26 @@
             display: flex;
             gap: 10px;
         }
+        #phaser-stage { position: absolute; inset: 60px 0 0; overflow: hidden; }
+        #phaser-stage canvas { display: block; touch-action: none; }
+        #control-panel { left: 10px; right: auto; flex-wrap: wrap; }
+        #status-message { font-size: 14px; line-height: 1.5; min-height: 3em; }
+        #status-message.error { color: #ffb4a8; }
+        .help { color: #bbbbbb; font-size: 13px; }
+        button:disabled { cursor: default; opacity: 0.45; }
+        @media (max-width: 720px) {
+            #game-container { flex-direction: column; }
+            #phaser-container { width: 100%; height: 60%; }
+            #properties-panel { width: 100%; height: 40%; }
+            #control-panel { gap: 5px; }
+            #control-panel button { padding: 8px 10px; }
+        }
     </style>
 </head>
 <body>
     <div id="game-container">
         <div id="phaser-container">
+            <div id="phaser-stage"></div>
             <div id="control-panel">
                 <button id="test-button">テストプレイ</button>
                 <button id="stop-button" style="display: none;">エディターに戻る</button>
@@ -136,6 +154,8 @@
         </div>
         <div id="properties-panel">
             <h2>ピンボールエディター</h2>
+            <p id="status-message" role="status" aria-live="polite">読み込み中…</p>
+            <p class="help">操作：左矢印 / Z、右矢印 / スラッシュ</p>
             
             <div class="property-group">
                 <h3>新規オブジェクト</h3>
@@ -164,1053 +184,769 @@
     </div>
 
     <script>
-        // ゲーム全体を管理するクラス
-        class PinballGame {
-            constructor() {
-                // 共有データ
-                this.layoutData = null;
-                
-                // シーン設定
-                this.config = {
-                    type: Phaser.AUTO,
-                    width: document.getElementById('phaser-container').clientWidth,
-                    height: document.getElementById('phaser-container').clientHeight,
-                    parent: 'phaser-container',
-                    physics: {
-                        default: 'matter',
-                        matter: {
-                            gravity: { y: 1 },
-                            debug: false
-                        }
-                    },
-                    scene: [EditorScene, GameScene]
-                };
-                
-                this.game = new Phaser.Game(this.config);
-                
-                // UI イベントをセットアップ
-                this.setupUIEvents();
-            }
-            
-            setupUIEvents() {
-                // テストプレイボタン
-                document.getElementById('test-button').addEventListener('click', () => {
-                    this.startGame();
-                });
-                
-                // エディターに戻るボタン
-                document.getElementById('stop-button').addEventListener('click', () => {
-                    this.stopGame();
-                });
-                
-                // 保存ボタン
-                document.getElementById('save-button').addEventListener('click', () => {
-                    const editorScene = this.getEditorScene();
-                    if (editorScene) {
-                        editorScene.saveLayout();
-                    }
-                });
-                
-                // 読込ボタン
-                document.getElementById('load-button').addEventListener('click', () => {
-                    const editorScene = this.getEditorScene();
-                    if (editorScene) {
-                        editorScene.loadLayout();
-                    }
-                });
-                
-                // ゲームオーバー画面のボタン
-                document.getElementById('restart-button').addEventListener('click', () => {
-                    document.getElementById('game-over').style.display = 'none';
-                    this.restartGame();
-                });
-                
-                document.getElementById('edit-button').addEventListener('click', () => {
-                    document.getElementById('game-over').style.display = 'none';
-                    this.stopGame();
-                });
-                
-                // ウィンドウリサイズ対応
-                window.addEventListener('resize', () => {
-                    this.game.scale.resize(
-                        document.getElementById('phaser-container').clientWidth,
-                        document.getElementById('phaser-container').clientHeight
-                    );
-                });
-                
-            }//setupUIEvents
-            
-            getEditorScene() {
-                return this.game.scene.getScene('EditorScene');
-            }
-            
-            getGameScene() {
-                return this.game.scene.getScene('GameScene');
-            }
-            
-            startGame() {
-                // UIを切り替え
-                document.getElementById('test-button').style.display = 'none';
-                document.getElementById('stop-button').style.display = 'inline-block';
-                document.getElementById('save-button').style.display = 'none';
-                document.getElementById('load-button').style.display = 'none';
-                document.getElementById('properties-panel').style.pointerEvents = 'none';
-                document.getElementById('properties-panel').style.opacity = '0.5';
-                
-                // エディターシーンからレイアウトデータを取得
-                const editorScene = this.getEditorScene();
-                if (editorScene) {
-                    this.layoutData = editorScene.getLayoutData();
-                    
-                    // エディターシーンを一時停止
-                    this.game.scene.pause('EditorScene');
-                    
-                    // ゲームシーンを開始
-                    this.game.scene.start('GameScene', { layoutData: this.layoutData });
+        'use strict';
+
+        const DEFAULT_BOARD = Object.freeze({ width: 800, height: 1000 });
+        const STORAGE_KEY = 'pinballLayout';
+        const LEGACY_BACKUP_KEY = 'pinballLayoutLegacyBackup';
+        const $ = id => document.getElementById(id);
+
+        // 保存・UI・プレイ開始で共通の検証を通す。現在の盤面は検証後に置換する。
+        class LayoutCodec {
+            static number(value, fallback, name, min = -100000, max = 100000) {
+                const result = value === undefined ? fallback : value;
+                if (typeof result !== 'number' || !Number.isFinite(result) || result < min || result > max) {
+                    throw new Error(`${name}は${min}～${max}の数値で指定してください。`);
                 }
+                return result === 0 ? 0 : result;
             }
-            
-            stopGame() {
-                // UIを切り替え
-                document.getElementById('test-button').style.display = 'inline-block';
-                document.getElementById('stop-button').style.display = 'none';
-                document.getElementById('save-button').style.display = 'inline-block';
-                document.getElementById('load-button').style.display = 'inline-block';
-                document.getElementById('properties-panel').style.pointerEvents = 'auto';
-                document.getElementById('properties-panel').style.opacity = '1';
-                
-                // ゲームシーンを停止
-                this.game.scene.stop('GameScene');
-                
-                // エディターシーンを再開
-                this.game.scene.resume('EditorScene');
+
+            static boolean(value, fallback, name) {
+                if (value === undefined) return fallback;
+                if (typeof value !== 'boolean') throw new Error(`${name}が不正です。`);
+                return value;
             }
-            
-            restartGame() {
-                // ゲームシーンを再起動
-                this.game.scene.restart('GameScene', { layoutData: this.layoutData });
+
+            static board(data = DEFAULT_BOARD) {
+                if (!data || typeof data !== 'object') throw new Error('盤面サイズが不正です。');
+                return {
+                    width: this.number(data.width, undefined, '盤面の幅', 200, 10000),
+                    height: this.number(data.height, undefined, '盤面の高さ', 200, 10000)
+                };
             }
-            
-            showGameOver(score) {
-                document.getElementById('final-score').textContent = score;
-                document.getElementById('game-over').style.display = 'flex';
+
+            static object(data) {
+                if (!data || typeof data !== 'object' || !['wall', 'bumper', 'flipper', 'ball'].includes(data.type)) {
+                    throw new Error('未対応のオブジェクトが含まれています。');
+                }
+                const defaults = {
+                    wall: { color: '#888888', restitution: 0.7 },
+                    bumper: { color: '#00aaff', restitution: 1.5 },
+                    flipper: { color: '#ff0000', restitution: 0.8 },
+                    ball: { color: '#ffffff', restitution: 0.8 }
+                }[data.type];
+                const color = data.color === undefined ? defaults.color : data.color;
+                if (typeof color !== 'string' || !/^#[0-9a-f]{6}$/i.test(color)) throw new Error('色が不正です。');
+                const name = data.name === undefined ? data.type : data.name;
+                if (typeof name !== 'string' || name.length > 200) throw new Error('名前は200文字以内で指定してください。');
+                const result = {
+                    type: data.type,
+                    x: this.number(data.x, undefined, 'X位置'),
+                    y: this.number(data.y, undefined, 'Y位置'),
+                    width: this.number(data.width, data.radius === undefined ? undefined : data.radius * 2, '幅', 1, 10000),
+                    height: this.number(data.height, data.radius === undefined ? undefined : data.radius * 2, '高さ', 1, 10000),
+                    angle: this.number(data.angle, 0, '角度', -180, 180),
+                    name, color,
+                    restitution: this.number(data.restitution, defaults.restitution, '反発係数', 0, 2)
+                };
+                if (data.type === 'wall') result.isStatic = this.boolean(data.isStatic, true, '固定状態');
+                if (data.type === 'bumper' || data.type === 'ball') {
+                    result.radius = this.number(data.radius, result.width / 2, '半径', 0.5, 5000);
+                    result.width = result.height = result.radius * 2;
+                }
+                if (data.type === 'bumper') result.score = this.number(data.score, 50, 'スコア', 0, 1000000);
+                if (data.type === 'flipper') {
+                    result.isLeft = this.boolean(data.isLeft, true, '左右');
+                    result.restAngle = this.number(data.restAngle, 0, '初期角度', -180, 180);
+                    result.flipAngle = this.number(data.flipAngle, result.isLeft ? -45 : 45, 'フリップ角度', -180, 180);
+                }
+                if (data.type === 'ball') {
+                    result.isBallPositionMarker = this.boolean(data.isBallPositionMarker, true, '開始位置');
+                    if (!result.isBallPositionMarker) throw new Error('配置データのボールは開始位置マーカーにしてください。');
+                    result.friction = this.number(data.friction, 0.005, '摩擦係数', 0, 1);
+                }
+                return result;
+            }
+
+            static normalize(data, fallbackBoard = DEFAULT_BOARD) {
+                if (!data || typeof data !== 'object' || !Array.isArray(data.objects)) throw new Error('objects配列がありません。');
+                if (data.schemaVersion !== undefined && data.schemaVersion !== 1) throw new Error('未対応の保存バージョンです。');
+                if (data.objects.length > 1000) throw new Error('オブジェクトは1000個までです。');
+                const objects = data.objects.map(item => this.object(item));
+                if (objects.filter(item => item.type === 'ball').length > 1) throw new Error('開始位置マーカーは1個にしてください。');
+                const board = data.schemaVersion === 1 ? data.board : fallbackBoard;
+                if (!board) throw new Error('盤面サイズがありません。');
+                return { schemaVersion: 1, board: this.board(board), objects };
+            }
+
+            // 旧コードが先頭に自動生成した3壁だけを候補とする。削除は画面で選択してもらう。
+            static legacyBoundaryBoard(data) {
+                if (data.schemaVersion !== undefined || !Array.isArray(data.objects) || data.objects.length < 3) return null;
+                const [left, right, top] = data.objects;
+                if (![left, right, top].every(o => o && o.type === 'wall' && o.isStatic === true && o.angle === 0)) return null;
+                const width = top.width, height = left.height;
+                if (left.name !== '左壁' || right.name !== '右壁' || top.name !== '上壁' ||
+                    left.x !== 5 || left.y !== height / 2 || left.width !== 10 ||
+                    right.x !== width - 5 || right.y !== height / 2 || right.width !== 10 || right.height !== height ||
+                    top.x !== width / 2 || top.y !== 5 || top.height !== 10) return null;
+                return this.board({ width, height });
             }
         }
 
-        // ゲームオブジェクト基底クラス
+        class PinballGame {
+            constructor() {
+                this.mode = 'loading';
+                this.layoutData = null;
+                this.board = { ...DEFAULT_BOARD };
+                this.editor = new EditorScene(this);
+                this.play = new GameScene(this);
+                this.setupUIEvents();
+                this.setMode('loading');
+                this.game = new Phaser.Game({
+                    type: Phaser.AUTO,
+                    parent: 'phaser-stage',
+                    width: this.board.width, height: this.board.height,
+                    backgroundColor: '#111111',
+                    scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
+                    physics: { default: 'matter', matter: { gravity: { y: 1 }, debug: false } },
+                    scene: [this.editor, this.play]
+                });
+                // ペインの高さ変更も含め、盤面座標は変えずに表示だけを追従させる。
+                if (typeof ResizeObserver !== 'undefined') {
+                    this.resizeObserver = new ResizeObserver(() => {
+                        if (this.mode !== 'loading' && this.game?.canvas) this.game.scale.refresh();
+                    });
+                    this.resizeObserver.observe($('phaser-stage'));
+                }
+            }
+
+            setupUIEvents() {
+                $('test-button').addEventListener('click', () => this.startGame());
+                $('stop-button').addEventListener('click', () => this.stopGame());
+                $('save-button').addEventListener('click', () => this.editor.saveLayout());
+                $('load-button').addEventListener('click', () => this.editor.loadLayout());
+                $('restart-button').addEventListener('click', () => this.restartGame());
+                $('edit-button').addEventListener('click', () => this.stopGame());
+            }
+
+            notify(message, error = false) {
+                $('status-message').textContent = message;
+                $('status-message').classList.toggle('error', error);
+            }
+
+            setMode(mode) {
+                this.mode = mode;
+                const editing = mode === 'edit';
+                const playing = mode === 'play' || mode === 'over';
+                for (const id of ['test-button', 'save-button', 'load-button']) {
+                    $(id).style.display = editing || mode === 'loading' ? '' : 'none';
+                    $(id).disabled = !editing;
+                }
+                $('stop-button').style.display = playing ? '' : 'none';
+                $('properties-panel').inert = !editing;
+                $('properties-panel').style.opacity = editing ? '1' : '0.5';
+                $('game-over').style.display = mode === 'over' ? 'flex' : 'none';
+                $('restart-button').disabled = mode !== 'over';
+            }
+
+            setBoard(board) {
+                this.board = { ...board };
+                this.game.scale.setGameSize(board.width, board.height);
+            }
+
+            getEditorScene() { return this.editor; }
+            getGameScene() { return this.play; }
+
+            startGame() {
+                if (this.mode !== 'edit') return;
+                try {
+                    this.layoutData = LayoutCodec.normalize(this.editor.getLayoutData());
+                    this.editor.handlePointerUp();
+                    this.setMode('starting');
+                    this.editor.scene.sleep();
+                    this.editor.scene.launch('GameScene', { layoutData: this.layoutData });
+                } catch (error) {
+                    this.setMode('edit');
+                    this.notify(error.message, true);
+                }
+            }
+
+            stopGame() {
+                if (this.mode !== 'play' && this.mode !== 'over') return;
+                this.setMode('returning');
+                this.play.scene.stop();
+                this.play.scene.wake('EditorScene');
+            }
+
+            restartGame() {
+                if (this.mode !== 'over') return;
+                this.setMode('starting');
+                this.play.scene.restart({ layoutData: this.layoutData });
+            }
+
+            showGameOver(score) {
+                $('final-score').textContent = score;
+                this.setMode('over');
+            }
+        }
+
         class GameObject {
             constructor(scene, x, y, width, height, options = {}) {
                 this.scene = scene;
                 this.matter = scene.matter;
-                
-                this.x = x;
-                this.y = y;
-                this.width = width;
-                this.height = height;
-                this.angle = options.angle || 0;
-                this.name = options.name || this.constructor.name;
-                this.restitution = options.restitution !== undefined ? options.restitution : 0.7;
-                this.color = options.color || '#888888';
-                
+                Object.assign(this, { x, y, width, height });
+                this.angle = options.angle ?? 0;
+                this.name = options.name ?? this.constructor.name;
+                this.restitution = options.restitution ?? 0.7;
+                this.color = options.color ?? '#888888';
+                this.isBoundary = options.isBoundary === true;
                 this.gameObject = null;
-                this.createGameObject();
+                this.bodySize = null;
+                // 派生クラスの全属性が確定してからcreateGameObjectを呼ぶ。
             }
-            
+
+            bodyOptions() { return { isStatic: true, restitution: this.restitution }; }
+            shape() { return { type: 'rectangle', width: this.width, height: this.height }; }
+            bodyPosition() { return { x: this.x, y: this.y }; }
+            displayAngle() { return this.angle; }
+
             createGameObject() {
-                // サブクラスで実装
+                this.gameObject = this.scene.add.rectangle(this.x, this.y, this.width, this.height, 0xffffff);
+                this.finishCreation();
             }
-            
-            setPosition(x, y) {
-                this.x = x;
-                this.y = y;
-                this.updateProperties();
-            }
-            
-            updateProperties() {
-                if (this.gameObject) {
-                    this.gameObject.setPosition(this.x, this.y);
-                    
-                    if (this.gameObject.setAngle) {
-                        this.gameObject.setAngle(this.angle);
-                    }
-                    
-                    if (this.gameObject.setTint) {
-                        // カラー文字列をPhaser用の色に変換
-                        const color = Phaser.Display.Color.ValueToColor(this.color);
-                        const tintColor = Phaser.Display.Color.GetColor(color.r, color.g, color.b);
-                        this.gameObject.setTint(tintColor);
-                    }
-                    
-                    // ユーザーデータの更新
-                    if (this.gameObject.body) {
-                        this.gameObject.body.restitution = this.restitution;
-                    }
-                    
-                    this.gameObject.userData = this;
-                }
-            }
-            
-            setSelected(selected) {
-                if (this.gameObject) {
-                    if (selected) {
-                        // 選択されたオブジェクトを強調表示
-                        this.gameObject.setStrokeStyle(2, 0xffff00);
+
+            finishCreation() {
+                try {
+                    if (!this.isBallPositionMarker) {
+                        this.matter.add.gameObject(this.gameObject, { ...this.bodyOptions(), shape: this.shape() });
+                        this.bodySize = [this.width, this.height];
                     } else {
-                        // 選択解除
-                        this.gameObject.setStrokeStyle(0);
+                        this.gameObject.setAlpha(0.5);
                     }
+                    this.gameObject.userData = this;
+                    this.updateProperties();
+                } catch (error) { this.destroy(); throw error; }
+            }
+
+            updateProperties() {
+                if (!this.gameObject) return;
+                const go = this.gameObject;
+                if (this.type === 'bumper' || this.type === 'ball') {
+                    this.width = this.height = this.radius * 2;
+                    if (go.radius !== this.radius) go.setRadius(this.radius);
+                } else if (go.width !== this.width || go.height !== this.height) {
+                    go.setSize(this.width, this.height);
+                }
+                if (go.body && (!this.bodySize || this.bodySize[0] !== this.width || this.bodySize[1] !== this.height)) {
+                    this.removeHinge();
+                    go.setBody(this.shape(), this.bodyOptions());
+                    this.bodySize = [this.width, this.height];
+                }
+                const position = this.bodyPosition();
+                go.setPosition(position.x, position.y);
+                go.setAngle(this.displayAngle());
+                go.setFillStyle(Phaser.Display.Color.ValueToColor(this.color).color);
+                if (go.body) {
+                    go.body.restitution = this.restitution;
+                    if (this.friction !== undefined) go.setFriction(this.friction);
                 }
             }
-            
+
+            removeHinge() {}
+            setPosition(x, y) { this.x = x; this.y = y; this.updateProperties(); }
+            setSelected(selected) { this.gameObject?.setStrokeStyle(selected ? 2 : 0, 0xffff00); }
+
+            contains(x, y) {
+                const position = this.bodyPosition();
+                const angle = -this.displayAngle() * Math.PI / 180;
+                const dx = x - position.x, dy = y - position.y;
+                const localX = dx * Math.cos(angle) - dy * Math.sin(angle);
+                const localY = dx * Math.sin(angle) + dy * Math.cos(angle);
+                if (this.type === 'ball' || this.type === 'bumper') return Math.hypot(localX, localY) <= this.radius;
+                return Math.abs(localX) <= this.width / 2 && Math.abs(localY) <= this.height / 2;
+            }
+
             destroy() {
+                this.removeHinge();
                 if (this.gameObject) {
+                    this.gameObject.userData = null;
                     this.gameObject.destroy();
                     this.gameObject = null;
                 }
             }
-            
+
             serialize() {
                 return {
-                    type: this.type,
-                    x: this.x,
-                    y: this.y,
-                    width: this.width,
-                    height: this.height,
-                    angle: this.angle,
-                    name: this.name,
-                    restitution: this.restitution,
-                    color: this.color
+                    type: this.type, x: this.x, y: this.y, width: this.width, height: this.height,
+                    angle: this.angle, name: this.name, restitution: this.restitution, color: this.color
                 };
             }
-            
+
             static deserialize(scene, data) {
                 switch (data.type) {
-                    case 'wall':
-                        return new Wall(scene, data.x, data.y, data.width, data.height, data);
-                    case 'bumper':
-                        return new Bumper(scene, data.x, data.y, data.radius * 2, data);
-                    case 'flipper':
-                        return new Flipper(scene, data.x, data.y, data.width, data.height, data);
-                    case 'ball':
-                        return new Ball(scene, data.x, data.y, data.radius, data);
-                    default:
-                        console.error('Unknown object type:', data.type);
-                        return null;
+                    case 'wall': return new Wall(scene, data.x, data.y, data.width, data.height, data);
+                    case 'bumper': return new Bumper(scene, data.x, data.y, data.radius * 2, data);
+                    case 'flipper': return new Flipper(scene, data.x, data.y, data.width, data.height, data);
+                    case 'ball': return new Ball(scene, data.x, data.y, data.radius, data);
+                    default: throw new Error(`未対応の種類: ${data.type}`);
                 }
             }
         }
 
-        // 壁クラス
         class Wall extends GameObject {
             constructor(scene, x, y, width, height, options = {}) {
                 super(scene, x, y, width, height, options);
                 this.type = 'wall';
-                this.isStatic = options.isStatic !== undefined ? options.isStatic : true;
+                this.isStatic = options.isStatic ?? true;
+                this.createGameObject();
             }
-            
-            createGameObject() {
-                this.gameObject = this.scene.add.rectangle(this.x, this.y, this.width, this.height, Phaser.Display.Color.ValueToColor(this.color).color);
-                
-                // 物理ボディ作成
-                this.matter.add.gameObject(this.gameObject, {
-                    isStatic: this.isStatic,
-                    restitution: this.restitution
-                });
-                
-                this.gameObject.userData = this;
-                this.updateProperties();
-            }
-            
-            updateProperties() {
-                super.updateProperties();
-                
-                if (this.gameObject) {
-                    this.gameObject.displayWidth = this.width;
-                    this.gameObject.displayHeight = this.height;
-                    this.gameObject.setAngle(this.angle);
-                    
-                    // ボディの形状を更新
-                    this.matter.body.setAngle(this.gameObject.body, this.angle * (Math.PI / 180));
-                    this.matter.body.scale(this.gameObject.body, 
-                        this.width / this.gameObject.width, 
-                        this.height / this.gameObject.height);
-                }
-            }
-            
-            serialize() {
-                const base = super.serialize();
-                return {
-                    ...base,
-                    isStatic: this.isStatic
-                };
-            }
+            bodyOptions() { return { isStatic: this.isStatic, restitution: this.restitution }; }
+            serialize() { return { ...super.serialize(), isStatic: this.isStatic }; }
         }
 
-        // バンパークラス
         class Bumper extends GameObject {
-            constructor(scene, x, y, radius, options = {}) {
-                super(scene, x, y, radius, radius, options);
+            constructor(scene, x, y, diameter, options = {}) {
+                super(scene, x, y, diameter, diameter, { color: '#00aaff', restitution: 1.5, ...options });
                 this.type = 'bumper';
-                this.radius = radius / 2;
-                this.restitution = options.restitution !== undefined ? options.restitution : 1.5;
-                this.score = options.score || 50;
-                this.color = options.color || '#00aaff';
+                this.radius = diameter / 2;
+                this.score = options.score ?? 50;
+                this.createGameObject();
             }
-            
             createGameObject() {
-                this.gameObject = this.scene.add.circle(this.x, this.y, this.radius, Phaser.Display.Color.ValueToColor(this.color).color);
-                
-                // 物理ボディ作成
-                this.matter.add.gameObject(this.gameObject, {
-                    isStatic: true,
-                    shape: { type: 'circle' },
-                    restitution: this.restitution
-                });
-                
-                this.gameObject.userData = this;
-                this.updateProperties();
+                this.gameObject = this.scene.add.circle(this.x, this.y, this.radius, 0xffffff);
+                this.finishCreation();
             }
-            
-            updateProperties() {
-                super.updateProperties();
-                
-                if (this.gameObject) {
-                    this.gameObject.displayWidth = this.width;
-                    this.gameObject.displayHeight = this.width; // 円形なので高さも同じ値を使用
-                    this.radius = this.width / 2;
-                    
-                    // ボディの半径を更新
-                    if (this.gameObject.body) {
-                        this.matter.body.scale(this.gameObject.body, 
-                            this.width / this.gameObject.width, 
-                            this.width / this.gameObject.height);
-                    }
-                }
-            }
-            
+            shape() { return { type: 'circle', radius: this.radius }; }
             flash() {
-                if (this.gameObject) {
-                    // バンパーをフラッシュ
-                    const originalFill = this.gameObject.fillColor;
-                    this.gameObject.setFillStyle(0xffff00);
-                    
-                    this.scene.time.delayedCall(100, () => {
-                        if (this.gameObject) {
-                            this.gameObject.setFillStyle(originalFill);
-                        }
-                    });
-                }
+                this.flashTimer?.remove();
+                this.gameObject?.setFillStyle(0xffff00);
+                this.flashTimer = this.scene.time.delayedCall(100, () => {
+                    this.gameObject?.setFillStyle(Phaser.Display.Color.ValueToColor(this.color).color);
+                });
             }
-            
-            serialize() {
-                const base = super.serialize();
-                return {
-                    ...base,
-                    radius: this.radius,
-                    score: this.score
-                };
-            }
+            destroy() { this.flashTimer?.remove(); super.destroy(); }
+            serialize() { return { ...super.serialize(), radius: this.radius, score: this.score }; }
         }
 
-        // フリッパークラス
         class Flipper extends GameObject {
             constructor(scene, x, y, width, height, options = {}) {
-                super(scene, x, y, width, height, options);
+                super(scene, x, y, width, height, { color: '#ff0000', restitution: 0.8, ...options });
                 this.type = 'flipper';
-                this.restitution = options.restitution !== undefined ? options.restitution : 0.8;
-                this.isLeft = options.isLeft !== undefined ? options.isLeft : true;
-                this.restAngle = options.restAngle || 0;
-                this.flipAngle = options.flipAngle || (this.isLeft ? -45 : 45);
-                this.currentAngle = this.restAngle;
+                this.isLeft = options.isLeft ?? true;
+                this.restAngle = options.restAngle ?? 0;
+                this.flipAngle = options.flipAngle ?? (this.isLeft ? -45 : 45);
                 this.isFlipping = false;
-                this.color = options.color || '#ff0000';
+                this.hinge = null;
+                this.createGameObject();
             }
-            
-            createGameObject() {
-                // Phaserの矩形で表現
-                this.gameObject = this.scene.add.rectangle(this.x, this.y, this.width, this.height, Phaser.Display.Color.ValueToColor(this.color).color, 1);
-                this.gameObject.setOrigin(this.isLeft ? 0 : 1, 0.5);
-                
-                // 物理ボディ作成
-                this.matter.add.gameObject(this.gameObject, {
-                    isStatic: true,
-                    restitution: this.restitution
-                });
-                
-                // ヒンジ位置を設定
-                this.gameObject.body.frictionAir = 0.1;
-                this.gameObject.body.chamfer = { radius: 10 };
-                
-                // フリッパーの回転原点を設定
-                this.gameObject.userData = this;
-                this.updateProperties();
+            bodyOptions() {
+                return { isStatic: !this.scene.isPlaying, ignoreGravity: true, frictionAir: 0.05,
+                    density: 0.01, restitution: this.restitution };
             }
-            
+            displayAngle() { return this.restAngle; }
+            bodyPosition() {
+                const offset = (this.isLeft ? 1 : -1) * this.width / 2;
+                const angle = this.restAngle * Math.PI / 180;
+                return { x: this.x + offset * Math.cos(angle), y: this.y + offset * Math.sin(angle) };
+            }
             updateProperties() {
+                this.removeHinge();
                 super.updateProperties();
-                
-                if (this.gameObject) {
-                    this.gameObject.displayWidth = this.width;
-                    this.gameObject.displayHeight = this.height;
-                    
-                    // 向きに応じた原点設定
-                    this.gameObject.setOrigin(this.isLeft ? 0 : 1, 0.5);
-                    
-                    // ボディの形状を更新
-                    if (this.gameObject.body) {
-                        this.matter.body.scale(this.gameObject.body, 
-                            this.width / this.gameObject.width, 
-                            this.height / this.gameObject.height);
-                    }
-                    
-                    // 角度設定
-                    this.gameObject.setAngle(this.currentAngle);
+                const body = this.gameObject?.body;
+                if (body && this.scene.isPlaying) {
+                    // Constraint.createはpointBを「現在のワールド向き」で受け取る。
+                    const offset = (this.isLeft ? -1 : 1) * this.width / 2;
+                    const angle = body.angle;
+                    this.hinge = this.matter.add.worldConstraint(body, 0, 1, {
+                        pointA: { x: this.x, y: this.y },
+                        pointB: { x: offset * Math.cos(angle), y: offset * Math.sin(angle) },
+                        damping: 0.2
+                    });
+                    this.hingeWorld = this.matter.world;
                 }
             }
-            
-            flip() {
-                if (!this.isFlipping) {
-                    this.isFlipping = true;
-                    this.currentAngle = this.flipAngle;
-                    
-                    if (this.gameObject) {
-                        this.gameObject.setAngle(this.currentAngle);
-                    }
-                }
+            removeHinge() {
+                if (this.hinge) { this.hingeWorld?.removeConstraint(this.hinge); this.hinge = null; this.hingeWorld = null; }
             }
-            
-            reset() {
-                if (this.isFlipping) {
-                    this.isFlipping = false;
-                    this.currentAngle = this.restAngle;
-                    
-                    if (this.gameObject) {
-                        this.gameObject.setAngle(this.currentAngle);
-                    }
-                }
+            flip() { this.isFlipping = true; }
+            reset() { this.isFlipping = false; }
+            drive() {
+                const body = this.gameObject?.body;
+                if (!body || body.isStatic) return;
+                // 3.60.0同梱MatterはignoreGravityを参照しないため、駆動部の重力だけ相殺する。
+                const gravity = this.matter.world.engine.gravity;
+                const gravityScale = gravity.scale ?? 0.001;
+                body.force.x -= body.mass * gravity.x * gravityScale;
+                body.force.y -= body.mass * gravity.y * gravityScale;
+                const target = (this.isFlipping ? this.flipAngle : this.restAngle) * Math.PI / 180;
+                const error = Math.atan2(Math.sin(target - body.angle), Math.cos(target - body.angle));
+                this.matter.body.setAngularVelocity(body, Math.max(-0.25, Math.min(0.25, error * 0.45)));
             }
-            
             serialize() {
-                const base = super.serialize();
-                return {
-                    ...base,
-                    isLeft: this.isLeft,
-                    restAngle: this.restAngle,
-                    flipAngle: this.flipAngle
-                };
+                return { ...super.serialize(), isLeft: this.isLeft, restAngle: this.restAngle, flipAngle: this.flipAngle };
             }
         }
 
-        // ボールクラス
         class Ball extends GameObject {
             constructor(scene, x, y, radius, options = {}) {
-                super(scene, x, y, radius * 2, radius * 2, options);
+                super(scene, x, y, radius * 2, radius * 2, { color: '#ffffff', restitution: 0.8, ...options });
                 this.type = 'ball';
                 this.radius = radius;
-                this.restitution = options.restitution !== undefined ? options.restitution : 0.8;
-                this.friction = options.friction !== undefined ? options.friction : 0.005;
-                this.color = options.color || '#ffffff';
-                this.isBallPositionMarker = options.isBallPositionMarker || false;
+                this.friction = options.friction ?? 0.005;
+                this.isBallPositionMarker = options.isBallPositionMarker ?? false;
+                this.createGameObject();
             }
-            
             createGameObject() {
-                // 円グラフィックを生成
-                this.gameObject = this.scene.add.circle(this.x, this.y, this.radius, Phaser.Display.Color.ValueToColor(this.color).color);
-                
-                // ボール位置マーカーの場合は物理ボディを作成しない
-                if (this.isBallPositionMarker) {
-                    this.gameObject.setAlpha(0.5);
-                    return;
-                }
-                
-                // 動的な物理ボディを設定
-                this.matter.add.gameObject(this.gameObject, {
-                    shape: { type: 'circle', radius: this.radius },
-                    restitution: this.restitution,
-                    frictionAir: 0.001,
-                    isStatic: false
-                });
-                
-                this.gameObject.setFriction(this.friction);
-                this.gameObject.userData = this;
-                this.updateProperties();
+                this.gameObject = this.scene.add.circle(this.x, this.y, this.radius, 0xffffff);
+                this.finishCreation();
             }
-            
-            setVelocity(x, y) {
-                if (this.gameObject && this.gameObject.body) {
-                    this.matter.body.setVelocity(this.gameObject.body, { x: x, y: y });
-                }
-            }
-            
+            shape() { return { type: 'circle', radius: this.radius }; }
+            bodyOptions() { return { isStatic: false, restitution: this.restitution, friction: this.friction, frictionAir: 0.001 }; }
+            setVelocity(x, y) { if (this.gameObject?.body) this.gameObject.setVelocity(x, y); }
             serialize() {
-                const base = super.serialize();
-                return {
-                    ...base,
-                    radius: this.radius,
-                    isBallPositionMarker: this.isBallPositionMarker
-                };
+                return { ...super.serialize(), radius: this.radius, friction: this.friction, isBallPositionMarker: this.isBallPositionMarker };
             }
         }
 
-        // エディターシーン
+        function createBoundaries(scene, board) {
+            const objects = [];
+            try {
+                for (const [x, y, width, height, name] of [
+                    [5, board.height / 2, 10, board.height, '左壁'],
+                    [board.width - 5, board.height / 2, 10, board.height, '右壁'],
+                    [board.width / 2, 5, board.width, 10, '上壁']
+                ]) objects.push(new Wall(scene, x, y, width, height, { name, isStatic: true, isBoundary: true }));
+                return objects;
+            } catch (error) { objects.forEach(object => object.destroy()); throw error; }
+        }
+
         class EditorScene extends Phaser.Scene {
-            constructor() {
+            constructor(app) {
                 super({ key: 'EditorScene' });
+                this.app = app;
                 this.objects = [];
                 this.selectedObject = null;
                 this.isDragging = false;
-                this.dragOffsetX = 0;
-                this.dragOffsetY = 0;
+                this.isPlaying = false;
+                this.domListeners = [];
             }
-            
+
             create() {
-                // 物理エンジンの参照を保存
-                this.matter = this.matter;
-                
-                // 境界壁を作成
-                this.createBoundaryWalls();
-                
-                // マウスポインタ設定
-                this.pointer = this.input.activePointer;
-                
-                // ドラッグ用イベント
+                this.app.game = this.game;
+                this.board = { ...this.app.board };
+                this.matter.world.pause();
+                this.objects = createBoundaries(this, this.board);
                 this.input.on('pointerdown', this.handlePointerDown, this);
                 this.input.on('pointermove', this.handlePointerMove, this);
                 this.input.on('pointerup', this.handlePointerUp, this);
-                
-                // UIイベントをセットアップ
+                this.input.on('pointerupoutside', this.handlePointerUp, this);
+                this.events.on('sleep', this.handlePointerUp, this);
+                this.events.on('wake', this.onWake, this);
+                this.events.once('shutdown', this.shutdown, this);
                 this.setupUIEvents();
-                
-                // オブジェクトリストを更新
                 this.updateObjectList();
+                this.app.setMode('edit');
+                this.app.notify('壁・バンパー・左右フリッパー・開始位置を配置できます。');
             }
-            
+
+            onWake() { this.handlePointerUp(); this.matter.world.pause(); this.app.setMode('edit'); }
+
+            bind(id, event, handler) {
+                const element = $(id);
+                element.addEventListener(event, handler);
+                this.domListeners.push(() => element.removeEventListener(event, handler));
+            }
+
             setupUIEvents() {
-                // 新規オブジェクト追加ボタン
-                document.getElementById('add-wall-button').addEventListener('click', () => {
-                    const wall = this.addObject(new Wall(this, 200, 200, 100, 20));
-                    this.selectObject(wall);
-                    this.updateObjectList();
+                const add = factory => {
+                    if (this.app.mode !== 'edit') return;
+                    if (this.objects.filter(o => !o.isBoundary).length >= 1000) return this.app.notify('オブジェクトは1000個までです。', true);
+                    const object = factory();
+                    this.objects.push(object);
+                    this.selectObject(object);
+                };
+                this.bind('add-wall-button', 'click', () => add(() => new Wall(this, 200, 200, 100, 20)));
+                this.bind('add-bumper-button', 'click', () => add(() => new Bumper(this, 200, 200, 40)));
+                this.bind('add-flipper-button', 'click', () => add(() => new Flipper(this, 150, this.board.height - 100, 100, 20)));
+                this.bind('add-ball-button', 'click', () => {
+                    if (this.app.mode !== 'edit') return;
+                    const old = this.objects.find(o => o.type === 'ball');
+                    if (old) { old.setPosition(200, 200); this.selectObject(old); }
+                    else add(() => new Ball(this, 200, 200, 10, { isBallPositionMarker: true }));
                 });
-                
-                document.getElementById('add-bumper-button').addEventListener('click', () => {
-                    const bumper = this.addObject(new Bumper(this, 200, 200, 40));
-                    this.selectObject(bumper);
-                    this.updateObjectList();
+                this.bind('object-select', 'change', event => {
+                    if (this.app.mode === 'edit') this.selectObject(this.objects[Number(event.target.value)] ?? null);
                 });
-                
-                document.getElementById('add-flipper-button').addEventListener('click', () => {
-                    const height = this.game.config.height;
-                    const flipper = this.addObject(new Flipper(this, 150, height - 100, 100, 20));
-                    this.selectObject(flipper);
-                    this.updateObjectList();
-                });
-                
-                document.getElementById('add-ball-button').addEventListener('click', () => {
-                    // ボール位置マーカーの追加（既存のものがあれば削除）
-                    const existingMarker = this.objects.find(obj => obj.type === 'ball' && obj.isBallPositionMarker);
-                    if (existingMarker) {
-                        this.removeObject(existingMarker);
-                    }
-                    
-                    const ball = this.addObject(new Ball(this, 200, 200, 10, { isBallPositionMarker: true }));
-                    this.selectObject(ball);
-                    this.updateObjectList();
-                });
-                
-                // オブジェクト選択リスト
-                document.getElementById('object-select').addEventListener('change', (e) => {
-                    const index = e.target.value;
-                    if (index !== "") {
-                        this.selectObject(this.objects[index]);
-                    }
-                });
-                
-                // オブジェクト削除ボタン
-                document.getElementById('delete-object-button').addEventListener('click', () => {
-                    if (this.selectedObject && this.selectedObject.type !== 'boundary') {
-                        this.removeObject(this.selectedObject);
-                        this.updateObjectList();
-                    }
+                this.bind('delete-object-button', 'click', () => {
+                    if (this.app.mode === 'edit' && this.selectedObject) this.removeObject(this.selectedObject);
                 });
             }
-            
-            // 境界壁の作成
-            createBoundaryWalls() {
-                const width = this.game.config.width;
-                const height = this.game.config.height;
-                
-                // 左壁
-                this.addObject(new Wall(this, 5, height/2, 10, height, 
-                    { isStatic: true, name: "左壁", type: "boundary" }));
-                
-                // 右壁
-                this.addObject(new Wall(this, width - 5, height/2, 10, height, 
-                    { isStatic: true, name: "右壁", type: "boundary" }));
-                
-                // 上壁
-                this.addObject(new Wall(this, width/2, 5, width, 10, 
-                    { isStatic: true, name: "上壁", type: "boundary" }));
+
+            addObject(object) { this.objects.push(object); return object; }
+            removeObject(object) {
+                if (object.isBoundary) return;
+                const index = this.objects.indexOf(object);
+                if (index < 0) return;
+                this.objects.splice(index, 1);
+                object.destroy();
+                if (this.selectedObject === object) this.selectObject(null);
+                else this.updateObjectList();
             }
-            
-            // オブジェクトを追加
-            addObject(obj) {
-                this.objects.push(obj);
-                return obj;
-            }
-            
-            // オブジェクトを削除
-            removeObject(obj) {
-                const index = this.objects.indexOf(obj);
-                if (index !== -1) {
-                    this.objects.splice(index, 1);
-                    if (obj.gameObject) {
-                        obj.gameObject.destroy();
-                    }
-                    if (this.selectedObject === obj) {
-                        this.selectedObject = null;
-                        this.updatePropertiesPanel();
-                    }
-                }
-            }
-            
-            // オブジェクトを選択
-            selectObject(obj) {
-                // 前の選択をリセット
-                if (this.selectedObject && this.selectedObject.setSelected) {
-                    this.selectedObject.setSelected(false);
-                }
-                
-                this.selectedObject = obj;
-                
-                // 新しい選択を設定
-                if (obj && obj.setSelected) {
-                    obj.setSelected(true);
-                }
-                
-                // オブジェクトリストの選択を更新
-                const select = document.getElementById('object-select');
-                if (obj) {
-                    const index = this.objects.indexOf(obj);
-                    select.value = index;
-                } else {
-                    select.value = "";
-                }
-                
-                // プロパティパネルを更新
+            selectObject(object) {
+                if (object?.isBoundary) return;
+                this.selectedObject?.setSelected(false);
+                this.selectedObject = object;
+                object?.setSelected(true);
+                this.updateObjectList();
                 this.updatePropertiesPanel();
             }
-            
-            // ドラッグ処理
-// ドラッグ処理（前のコードの続き）
-handlePointerDown(pointer) {
-        let selectedObj = null;
-        let minDistance = Number.MAX_VALUE;
-        
-        // ポインターの位置に最も近いオブジェクトを見つける
-        this.objects.forEach(obj => {
-            if (obj.type !== 'boundary' && obj.gameObject) {
-                const distance = Phaser.Math.Distance.Between(
-                    pointer.x, pointer.y,
-                    obj.x, obj.y
+            handlePointerDown(pointer) {
+                if (this.app.mode !== 'edit' || pointer.button !== 0 && pointer.button !== undefined) return;
+                this.handlePointerUp();
+                const object = [...this.objects].reverse().find(o => !o.isBoundary && o.contains(pointer.x, pointer.y));
+                this.selectObject(object ?? null);
+                if (object) {
+                    this.isDragging = true;
+                    this.dragOffsetX = pointer.x - object.x;
+                    this.dragOffsetY = pointer.y - object.y;
+                }
+            }
+            handlePointerMove(pointer) {
+                if (!this.isDragging || !this.selectedObject) return;
+                if (!pointer.isDown) return this.handlePointerUp();
+                this.selectedObject.setPosition(
+                    Math.max(0, Math.min(this.board.width, pointer.x - this.dragOffsetX)),
+                    Math.max(0, Math.min(this.board.height, pointer.y - this.dragOffsetY))
                 );
-                
-                if (distance < minDistance && distance < 50) {
-                    minDistance = distance;
-                    selectedObj = obj;
-                }
+                this.updatePropertiesPanel();
+                this.updateObjectList();
             }
-        });
-        
-        if (selectedObj) {
-            this.selectObject(selectedObj);
-            this.isDragging = true;
-            this.dragOffsetX = pointer.x - selectedObj.x;
-            this.dragOffsetY = pointer.y - selectedObj.y;
-        } else {
-            this.selectObject(null);
-        }
-    }
-    
-    handlePointerMove(pointer) {
-        if (!this.isDragging || !this.selectedObject) return;
-        
-        const newX = pointer.x - this.dragOffsetX;
-        const newY = pointer.y - this.dragOffsetY;
-        
-        this.selectedObject.setPosition(newX, newY);
-        this.updatePropertiesPanel();
-    }
-    
-    handlePointerUp() {
-        this.isDragging = false;
-    }
-    
-    // オブジェクトリストを更新
-    updateObjectList() {
-        const select = document.getElementById('object-select');
-        select.innerHTML = '';
-        
-        this.objects.forEach((obj, index) => {
-            if (obj.type !== 'boundary') {
-                const option = document.createElement('option');
-                option.value = index;
-                option.textContent = `${obj.name || obj.type} (${Math.round(obj.x)}, ${Math.round(obj.y)})`;
-                select.appendChild(option);
+            handlePointerUp() { this.isDragging = false; }
+            updateObjectList() {
+                const select = $('object-select');
+                select.replaceChildren();
+                this.objects.forEach((object, index) => {
+                    if (object.isBoundary) return;
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = `${object.name || object.type} (${Math.round(object.x)}, ${Math.round(object.y)})`;
+                    select.appendChild(option);
+                });
+                select.value = this.selectedObject ? String(this.objects.indexOf(this.selectedObject)) : '';
+                $('delete-object-button').disabled = !this.selectedObject;
             }
-        });
-    }
-    
-    // プロパティパネルを更新
-    updatePropertiesPanel() {
-        const propertiesForm = document.getElementById('properties-form');
-        
-        if (!this.selectedObject) {
-            propertiesForm.innerHTML = '<p>オブジェクトを選択してください</p>';
-            return;
-        }
-        
-        // プロパティフォームをクリア
-        propertiesForm.innerHTML = '';
-        
-        // オブジェクト名
-        this.addPropertyField(propertiesForm, 'name', '名前', this.selectedObject.name || '', 'text');
-        
-        // 位置
-        this.addPropertyField(propertiesForm, 'x', 'X位置', this.selectedObject.x, 'number');
-        this.addPropertyField(propertiesForm, 'y', 'Y位置', this.selectedObject.y, 'number');
-        
-        // サイズ
-        this.addPropertyField(propertiesForm, 'width', '幅', this.selectedObject.width, 'number');
-        this.addPropertyField(propertiesForm, 'height', '高さ', this.selectedObject.height, 'number');
-        
-        // 角度
-        if (this.selectedObject.type === 'wall') {
-            this.addPropertyField(propertiesForm, 'angle', '角度', this.selectedObject.angle || 0, 'number');
-        }
-        
-        // 反発係数
-        this.addPropertyField(propertiesForm, 'restitution', '反発係数', this.selectedObject.restitution, 'number', 0, 1, 0.1);
-        
-        // 色
-        this.addPropertyField(propertiesForm, 'color', '色', this.selectedObject.color, 'color');
-        
-        // オブジェクト固有のプロパティ
-        if (this.selectedObject.type === 'bumper') {
-            this.addPropertyField(propertiesForm, 'score', 'スコア', this.selectedObject.score, 'number');
-        }
-        
-        // フリッパーの場合
-        if (this.selectedObject.type === 'flipper') {
-            this.addPropertyField(propertiesForm, 'restAngle', '初期角度', this.selectedObject.restAngle, 'number');
-            this.addPropertyField(propertiesForm, 'flipAngle', 'フリップ角度', this.selectedObject.flipAngle, 'number');
-            
-            // 左右選択
-            const isLeftRow = document.createElement('div');
-            isLeftRow.className = 'property-row';
-            
-            const isLeftLabel = document.createElement('label');
-            isLeftLabel.className = 'property-label';
-            isLeftLabel.textContent = '左/右';
-            
-            const isLeftSelect = document.createElement('select');
-            isLeftSelect.className = 'property-input';
-            isLeftSelect.name = 'isLeft';
-            
-            const leftOption = document.createElement('option');
-            leftOption.value = 'true';
-            leftOption.textContent = '左';
-            leftOption.selected = this.selectedObject.isLeft;
-            
-            const rightOption = document.createElement('option');
-            rightOption.value = 'false';
-            rightOption.textContent = '右';
-            rightOption.selected = !this.selectedObject.isLeft;
-            
-            isLeftSelect.appendChild(leftOption);
-            isLeftSelect.appendChild(rightOption);
-            
-            isLeftRow.appendChild(isLeftLabel);
-            isLeftRow.appendChild(isLeftSelect);
-            propertiesForm.appendChild(isLeftRow);
-            
-            isLeftSelect.addEventListener('change', (e) => {
-                this.selectedObject.isLeft = e.target.value === 'true';
-                this.selectedObject.updateProperties();
-            });
-        }
-    }
-    
-    // プロパティフィールドを追加
-    addPropertyField(container, property, label, value, type, min = null, max = null, step = null) {
-        const row = document.createElement('div');
-        row.className = 'property-row';
-        
-        const labelElement = document.createElement('label');
-        labelElement.className = 'property-label';
-        labelElement.textContent = label;
-        
-        const input = document.createElement('input');
-        input.className = 'property-input';
-        input.type = type;
-        input.value = value;
-        input.name = property;
-        
-        if (min !== null) input.min = min;
-        if (max !== null) input.max = max;
-        if (step !== null) input.step = step;
-        
-        row.appendChild(labelElement);
-        row.appendChild(input);
-        container.appendChild(row);
-        
-        // イベントリスナーを追加
-        input.addEventListener('change', (e) => {
-            let newValue = e.target.value;
-            
-            if (type === 'number') {
-                newValue = parseFloat(newValue);
-            }
-            
-            this.selectedObject[property] = newValue;
-            this.selectedObject.updateProperties();
-            this.updateObjectList();
-        });
-    }
-    
-    // レイアウトデータを取得
-    getLayoutData() {
-        return {
-            objects: this.objects
-                .filter(obj => obj.type !== 'boundary')
-                .map(obj => obj.serialize())
-        };
-    }
-    
-    // レイアウト保存
-    saveLayout() {
-        const layoutData = this.getLayoutData();
-        const dataStr = JSON.stringify(layoutData, null, 2);
-        localStorage.setItem('pinballLayout', dataStr);
-        
-        alert('レイアウトを保存しました');
-    }
-    
-    // レイアウト読込
-    loadLayout() {
-        const dataStr = localStorage.getItem('pinballLayout');
-        if (!dataStr) {
-            alert('保存されたレイアウトがありません');
-            return;
-        }
-        
-        try {
-            const layoutData = JSON.parse(dataStr);
-            
-            // 既存のオブジェクトをクリア（境界壁を除く）
-            for (let i = this.objects.length - 1; i >= 0; i--) {
-                if (this.objects[i].type !== 'boundary') {
-                    if (this.objects[i].gameObject) {
-                        this.objects[i].gameObject.destroy();
-                    }
-                    this.objects.splice(i, 1);
-                }
-            }
-            
-            // 新しいオブジェクトを作成
-            layoutData.objects.forEach(objData => {
-                const obj = GameObject.deserialize(this, objData);
-                if (obj) {
-                    this.addObject(obj);
-                }
-            });
-            
-            this.updateObjectList();
-            this.selectObject(null);
-            alert('レイアウトを読み込みました');
-            
-        } catch (e) {
-            console.error('レイアウト読込エラー:', e);
-            alert('レイアウトの読み込みに失敗しました');
-        }
-    }
-}
 
-        // ゲームシーン
+            updatePropertiesPanel() {
+                const form = $('properties-form');
+                form.replaceChildren();
+                const object = this.selectedObject;
+                if (!object) { form.textContent = 'オブジェクトを選択してください'; return; }
+                this.addPropertyField(form, 'name', '名前', object.name, 'text');
+                this.addPropertyField(form, 'x', object.type === 'flipper' ? '支点X' : 'X位置', object.x, 'number');
+                this.addPropertyField(form, 'y', object.type === 'flipper' ? '支点Y' : 'Y位置', object.y, 'number');
+                if (object.type === 'ball' || object.type === 'bumper') {
+                    this.addPropertyField(form, 'radius', '半径', object.radius, 'number', 0.5, 5000, 0.5);
+                } else {
+                    this.addPropertyField(form, 'width', '幅', object.width, 'number', 1, 10000);
+                    this.addPropertyField(form, 'height', '高さ', object.height, 'number', 1, 10000);
+                }
+                if (object.type === 'wall') this.addPropertyField(form, 'angle', '角度', object.angle, 'number', -180, 180);
+                this.addPropertyField(form, 'restitution', '反発係数', object.restitution, 'number', 0, 2, 0.1);
+                this.addPropertyField(form, 'color', '色', object.color, 'color');
+                if (object.type === 'bumper') this.addPropertyField(form, 'score', 'スコア', object.score, 'number', 0, 1000000);
+                if (object.type === 'ball') this.addPropertyField(form, 'friction', '摩擦係数', object.friction, 'number', 0, 1, 0.001);
+                if (object.type === 'flipper') {
+                    this.addPropertyField(form, 'restAngle', '初期角度', object.restAngle, 'number', -180, 180);
+                    this.addPropertyField(form, 'flipAngle', 'フリップ角度', object.flipAngle, 'number', -180, 180);
+                    const label = document.createElement('label');
+                    label.className = 'property-row';
+                    label.textContent = '左/右';
+                    const select = document.createElement('select');
+                    select.name = 'isLeft'; select.className = 'property-input';
+                    for (const [value, text] of [['true', '左'], ['false', '右']]) {
+                        const option = document.createElement('option');
+                        option.value = value; option.textContent = text; select.appendChild(option);
+                    }
+                    select.value = String(object.isLeft);
+                    select.addEventListener('change', () => {
+                        const isLeft = select.value === 'true';
+                        // 左右の変更時は初期角度を中心にフリップ方向も反転する。
+                        this.applyEdit(object, { isLeft, flipAngle: -object.flipAngle, restAngle: -object.restAngle });
+                        this.updatePropertiesPanel();
+                    });
+                    label.appendChild(select); form.appendChild(label);
+                }
+            }
+
+            addPropertyField(form, property, labelText, value, type, min = null, max = null, step = null) {
+                const label = document.createElement('label');
+                label.className = 'property-row';
+                const text = document.createElement('span');
+                text.className = 'property-label'; text.textContent = labelText;
+                const input = document.createElement('input');
+                input.className = 'property-input'; input.name = property; input.type = type; input.value = value;
+                if (type === 'number') input.step = step ?? 'any';
+                if (min !== null) input.min = min;
+                if (max !== null) input.max = max;
+                if (type === 'text') input.maxLength = 200;
+                input.addEventListener('change', () => {
+                    const object = this.selectedObject;
+                    if (!object) return;
+                    const newValue = type === 'number' ? input.valueAsNumber : input.value;
+                    if (!this.applyEdit(object, { [property]: newValue })) input.value = object[property];
+                });
+                label.appendChild(text); label.appendChild(input); form.appendChild(label);
+            }
+
+            applyEdit(object, changes) {
+                if (this.app.mode !== 'edit') return false;
+                try {
+                    const data = LayoutCodec.object({ ...object.serialize(), ...changes });
+                    Object.assign(object, data);
+                    object.updateProperties();
+                    this.updateObjectList();
+                    this.app.notify('変更しました。保存ボタンで保存できます。');
+                    return true;
+                } catch (error) { this.app.notify(error.message, true); return false; }
+            }
+
+            getLayoutData() {
+                return { schemaVersion: 1, board: { ...this.board },
+                    objects: this.objects.filter(object => !object.isBoundary).map(object => object.serialize()) };
+            }
+
+            saveLayout() {
+                if (this.app.mode !== 'edit') return;
+                try {
+                    const layout = LayoutCodec.normalize(this.getLayoutData());
+                    const previous = localStorage.getItem(STORAGE_KEY);
+                    if (previous && localStorage.getItem(LEGACY_BACKUP_KEY) === null) {
+                        let legacy = false;
+                        try { legacy = JSON.parse(previous)?.schemaVersion === undefined; } catch (_) { /* 不正な旧データも保全する */ legacy = true; }
+                        if (legacy) localStorage.setItem(LEGACY_BACKUP_KEY, previous);
+                    }
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout, null, 2));
+                    this.app.notify('レイアウトを保存しました。');
+                } catch (error) { this.app.notify(`保存できませんでした。${error.message}`, true); }
+            }
+
+            loadLayout() {
+                if (this.app.mode !== 'edit') return;
+                try {
+                    const text = localStorage.getItem(STORAGE_KEY);
+                    if (!text) { this.app.notify('保存されたレイアウトがありません。'); return; }
+                    const raw = JSON.parse(text);
+                    const legacyBoard = LayoutCodec.legacyBoundaryBoard(raw);
+                    const layout = LayoutCodec.normalize(raw, legacyBoard ?? this.board);
+                    let keptLegacyWalls = false;
+                    if (legacyBoard) {
+                        if (confirm('旧形式の先頭3枚は外周壁の形状です。固定外周に置き換えますか？\nキャンセルを選ぶと3枚とも編集可能な壁として保持します。')) layout.objects.splice(0, 3);
+                        else keptLegacyWalls = true;
+                    }
+                    this.replaceLayout(layout);
+                    this.app.notify(keptLegacyWalls ? '読み込みました。旧外周の3枚は通常の壁として残しています。' : 'レイアウトを読み込みました。');
+                } catch (error) { this.app.notify(`読み込みに失敗しました。${error.message}`, true); }
+            }
+
+            replaceLayout(data) {
+                const layout = LayoutCodec.normalize(data);
+                const staged = [];
+                try {
+                    staged.push(...createBoundaries(this, layout.board));
+                    for (const record of layout.objects) staged.push(GameObject.deserialize(this, record));
+                } catch (error) { staged.forEach(object => object.destroy()); throw error; }
+                const previous = this.objects;
+                this.handlePointerUp();
+                this.selectedObject = null;
+                this.objects = staged;
+                this.board = { ...layout.board };
+                previous.forEach(object => object.destroy());
+                this.app.setBoard(this.board);
+                this.updateObjectList();
+                this.updatePropertiesPanel();
+            }
+
+            shutdown() {
+                this.handlePointerUp();
+                this.domListeners.forEach(unbind => unbind()); this.domListeners = [];
+                this.events.off('wake', this.onWake, this);
+                this.events.off('sleep', this.handlePointerUp, this);
+                this.input.off('pointerdown', this.handlePointerDown, this);
+                this.input.off('pointermove', this.handlePointerMove, this);
+                this.input.off('pointerup', this.handlePointerUp, this);
+                this.input.off('pointerupoutside', this.handlePointerUp, this);
+                this.objects.forEach(object => object.destroy()); this.objects = []; this.selectedObject = null;
+            }
+        }
+
         class GameScene extends Phaser.Scene {
-            constructor() {
-                super({ key: 'GameScene' });
+            constructor(app) { super({ key: 'GameScene' }); this.app = app; this.objects = []; }
+            init(data) {
+                this.layoutData = LayoutCodec.normalize(data.layoutData);
+                this.board = { ...this.layoutData.board };
                 this.objects = [];
                 this.ball = null;
                 this.score = 0;
+                this.isGameOver = false;
+                this.isPlaying = true;
             }
-            
-            init(data) {
-                // レイアウトデータを受け取る
-                this.layoutData = data.layoutData;
-            }
-            
             create() {
-                // 物理エンジンの参照を保存
-                this.matter = this.matter;
-                
-                // スコア表示
-                this.scoreText = this.add.text(10, 10, 'Score: 0', { 
-                    fontSize: '24px', 
-                    fill: '#fff' 
-                });
-                this.scoreText.setDepth(100);
-                
-                // キーボード用の設定
-                this.keys = this.input.keyboard.addKeys({
-                    left: 'LEFT',
-                    right: 'RIGHT',
-                    z: 'Z',
-                    slash: 'SLASH'
-                });
-                
-                // 衝突イベント
+                this.events.once('shutdown', this.shutdown, this);
+                this.scoreText = this.add.text(16, 16, 'Score: 0', { fontSize: '24px', color: '#ffffff' }).setDepth(100);
+                this.input.keyboard.enabled = true;
+                this.input.keyboard.resetKeys();
+                this.keys = this.input.keyboard.addKeys({ left: 'LEFT', right: 'RIGHT', z: 'Z', slash: 'FORWARD_SLASH' });
+                this.matter.world.on('beforeupdate', this.beforePhysicsStep, this);
                 this.matter.world.on('collisionstart', this.handleCollision, this);
-                
-                // レイアウトからオブジェクトを作成
-                this.createObjectsFromLayout();
-                
-                // ボールを作成
-                this.createBall();
-            }
-            
-            update() {
-                // フリッパーの操作
-                this.objects.forEach(obj => {
-                    if (obj.type === 'flipper') {
-                        if ((obj.isLeft && (this.keys.left.isDown || this.keys.z.isDown)) ||
-                            (!obj.isLeft && (this.keys.right.isDown || this.keys.slash.isDown))) {
-                            obj.flip();
-                        } else {
-                            obj.reset();
-                        }
-                    }
-                });
-                
-                // ボール落下チェック
-                if (this.ball && this.ball.gameObject && this.ball.gameObject.y > this.game.config.height + 50) {
-                    this.gameOver();
+                this.objects = createBoundaries(this, this.board);
+                let marker = null;
+                for (const record of this.layoutData.objects) {
+                    if (record.type === 'ball') marker = record;
+                    else this.objects.push(GameObject.deserialize(this, record));
                 }
-            }
-            
-            // レイアウトからオブジェクト作成
-            createObjectsFromLayout() {
-                // 境界壁の作成
-                const width = this.game.config.width;
-                const height = this.game.config.height;
-                
-                // 左壁
-                this.addObject(new Wall(this, 5, height/2, 10, height, 
-                    { isStatic: true, name: "左壁", type: "boundary" }));
-                
-                // 右壁
-                this.addObject(new Wall(this, width - 5, height/2, 10, height, 
-                    { isStatic: true, name: "右壁", type: "boundary" }));
-                
-                // 上壁
-                this.addObject(new Wall(this, width/2, 5, width, 10, 
-                    { isStatic: true, name: "上壁", type: "boundary" }));
-                
-                // レイアウトデータから他のオブジェクトを作成
-                if (this.layoutData && this.layoutData.objects) {
-                    this.layoutData.objects.forEach(objData => {
-                        // ボール位置マーカーの場合はスキップ（実際のボールは別途作成）
-                        if (objData.type === 'ball' && objData.isBallPositionMarker) {
-                            this.ballStartX = objData.x;
-                            this.ballStartY = objData.y;
-                            return;
-                        }
-                        
-                        const obj = GameObject.deserialize(this, objData);
-                        if (obj) {
-                            this.addObject(obj);
-                        }
-                    });
-                }
-            }
-            
-            // ボールの作成
-            createBall() {
-                // デフォルトの開始位置
-                let startX = this.game.config.width / 2;
-                let startY = this.game.config.height / 3;
-                
-                // カスタム開始位置があれば使用
-                if (this.ballStartX !== undefined && this.ballStartY !== undefined) {
-                    startX = this.ballStartX;
-                    startY = this.ballStartY;
-                }
-                
-                this.ball = new Ball(this, startX, startY, 10);
-                this.addObject(this.ball);
+                this.ball = new Ball(this, marker?.x ?? this.board.width / 2, marker?.y ?? this.board.height / 3,
+                    marker?.radius ?? 10, { ...(marker ?? {}), isBallPositionMarker: false });
+                this.objects.push(this.ball);
                 this.ball.setVelocity(Math.random() * 4 - 2, -5);
+                this.matter.world.resume();
+                this.app.setMode('play');
             }
-            
-            // オブジェクトを追加
-            addObject(obj) {
-                this.objects.push(obj);
-                return obj;
-            }
-            
-            // 衝突ハンドラー
-            handleCollision(event) {
-                const pairs = event.pairs;
-                
-                for (let i = 0; i < pairs.length; i++) {
-                    const bodyA = pairs[i].bodyA;
-                    const bodyB = pairs[i].bodyB;
-                    
-                    // ボールとの衝突を検出
-                    if (this.ball && (bodyA.gameObject === this.ball.gameObject || bodyB.gameObject === this.ball.gameObject)) {
-                        const otherBody = bodyA.gameObject === this.ball.gameObject ? bodyB : bodyA;
-                        const otherObj = otherBody.gameObject ? otherBody.gameObject.userData : null;
-                        
-                        if (otherObj) {
-                            if (otherObj.type === 'bumper') {
-                                this.addScore(otherObj.score || 50);
-                                otherObj.flash();
-                            } else if (otherObj.type === 'flipper' && otherObj.isFlipping) {
-                                this.addScore(10);
-                            }
-                        }
-                    }
+            beforePhysicsStep() {
+                if (this.isGameOver) return;
+                for (const object of this.objects) {
+                    if (object.type !== 'flipper') continue;
+                    const down = object.isLeft ? this.keys.left.isDown || this.keys.z.isDown : this.keys.right.isDown || this.keys.slash.isDown;
+                    if (down) object.flip(); else object.reset();
+                    object.drive();
                 }
             }
-            
-            // スコア追加
+            update() {
+                if (this.isGameOver) return;
+                if (this.ball?.gameObject?.y > this.board.height + this.ball.radius + 50) this.gameOver();
+            }
+            handleCollision(event) {
+                if (this.isGameOver || !this.ball?.gameObject) return;
+                for (const { bodyA, bodyB } of event.pairs) {
+                    const ball = this.ball.gameObject;
+                    const other = bodyA.gameObject === ball ? bodyB : bodyB.gameObject === ball ? bodyA : null;
+                    const object = other?.gameObject?.userData;
+                    if (object?.type === 'bumper') { this.addScore(object.score); object.flash(); }
+                    else if (object?.type === 'flipper' && object.isFlipping) this.addScore(10);
+                }
+            }
             addScore(points) {
+                if (this.isGameOver) return;
                 this.score += points;
                 this.scoreText.setText(`Score: ${this.score}`);
             }
-            
-            // ゲームオーバー
             gameOver() {
-                // 親のPinballGameクラスを取得してゲームオーバー表示を呼び出す
-                const pinballGame = this.scene.get('EditorScene').pinballGame;
-                if (pinballGame) {
-                    pinballGame.showGameOver(this.score);
-                } else {
-                    // 直接表示（ゲームオーバー画面のDOM要素を使用）
-                    document.getElementById('final-score').textContent = this.score;
-                    document.getElementById('game-over').style.display = 'flex';
-                }
-                
-                // ボールを停止
-                if (this.ball && this.ball.gameObject && this.ball.gameObject.body) {
-                    this.ball.setVelocity(0, 0);
-                }
+                if (this.isGameOver) return;
+                this.isGameOver = true;
+                this.ball?.setVelocity(0, 0);
+                this.matter.world.pause();
+                this.input.keyboard.resetKeys();
+                this.input.keyboard.enabled = false;
+                this.app.showGameOver(this.score);
+            }
+            shutdown() {
+                this.matter.world?.off('beforeupdate', this.beforePhysicsStep, this);
+                this.matter.world?.off('collisionstart', this.handleCollision, this);
+                this.objects.forEach(object => object.destroy());
+                this.objects = []; this.ball = null; this.isPlaying = false;
             }
         }
 
-        // メインアプリケーション起動
         const pinballGame = new PinballGame();
-
-        // EditorSceneからpinballGameへの参照を設定（シーン間の通信用）
-        pinballGame.getEditorScene().pinballGame = pinballGame;
     </script>
 </body>
+</html>
