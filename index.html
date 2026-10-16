@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PINBALL ARCADE — 10の台とエディター</title>
+    <title>PINBALL ARCADE — 20の台とエディター</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
     <style>
         body {
@@ -139,6 +139,13 @@
         .audio-options input { display: block; width: 100%; accent-color: #00aaff; }
         #score-display { display: none; position: absolute; top: 8px; left: 8px; width: min(240px, 45%); aspect-ratio: 10 / 3; background-position: center; background-repeat: no-repeat; background-size: contain; z-index: 5; pointer-events: none; }
         #score-display span { position: absolute; inset: 26% 10% 10%; display: flex; align-items: center; font: clamp(14px, 2vw, 23px) monospace; color: #e3f4ff; }
+        .gallery-filters {display:flex;gap:8px;flex-wrap:wrap;max-width:1440px;margin:22px auto 0}
+        .gallery-filters button[aria-pressed="true"] {background:#74d8ff;color:#092036}
+        #feature-preset {margin:8px 0;width:100%}
+        .entity-settings {margin-top:16px;padding-top:12px;border-top:1px solid #637486}
+        .entity-settings textarea {display:block;width:100%;box-sizing:border-box;min-height:200px;background:#15212c;color:#e3f1ff;border:1px solid #68829c;font:12px/1.5 monospace;margin:10px 0;resize:vertical}
+        #feature-progress {color:#ffdc9b;line-height:1.6;max-width:80%;font-size:12px}
+        #play-controls button {min-width:0}
         [hidden] { display: none !important; }
         button:focus-visible { outline: 3px solid #7de5ff; outline-offset: 3px; }
         #table-gallery { position: fixed; inset: 0; z-index: 300; overflow: auto; padding: 36px clamp(16px, 4vw, 60px); box-sizing: border-box; background: radial-gradient(ellipse at 85% 0%, #16324a, transparent 60%), #0b1320; }
@@ -192,15 +199,16 @@
 </head>
 <body>
     <section id="table-gallery" aria-label="ピンボール台を選ぶ">
-        <header class="gallery-header"><div><div class="eyebrow">TEN TABLES / THREE BALLS</div>
-            <h1>PINBALL ARCADE</h1><p>10の台、10の跳ね方。好きな台から始めましょう。</p></div>
+        <header class="gallery-header"><div><div class="eyebrow">TWENTY TABLES / THREE BALLS</div>
+            <h1>PINBALL ARCADE</h1><p>定番10台と、仕掛けを試す10台。好きな台から始めましょう。</p></div>
             <button id="gallery-edit-button" disabled>エディターを開く</button></header>
+        <div class="gallery-filters" role="group" aria-label="台の分類"><button data-filter="all" aria-pressed="true">すべて 20</button><button data-filter="classic" aria-pressed="false">定番 10</button><button data-filter="lab" aria-pressed="false">新機能の試遊 10</button></div>
         <p id="gallery-note" role="status">読み込み中…</p><div id="table-grid"></div>
     </section>
     <div id="game-container">
         <div id="phaser-container">
             <div id="phaser-stage"><div id="score-display" aria-label="得点"><span id="current-score">Score: 0</span></div>
-                <div id="table-info" hidden><div id="table-name"></div><div id="round-progress"></div></div>
+                <div id="table-info" hidden><div id="table-name"></div><div id="round-progress"></div><div id="feature-progress"></div></div>
                 <div id="launch-prompt" hidden></div>
             </div>
             <div id="control-panel">
@@ -218,7 +226,7 @@
             </div>
             <div id="play-controls" hidden>
                 <button id="left-control" class="flipper-control" aria-label="左フリッパー">◀ 左</button>
-                <button id="launch-button">発射</button><button id="nudge-button">揺らす</button>
+                <button id="launch-button">発射</button><button id="action-control" hidden>特殊 E</button><button id="nudge-button">揺らす</button>
                 <button id="right-control" class="flipper-control" aria-label="右フリッパー">右 ▶</button>
             </div>
             <div id="game-over">
@@ -233,7 +241,7 @@
         </div>
         <div id="properties-panel">
             <section id="arcade-details" hidden><div class="eyebrow">TABLE GUIDE</div><h2 id="guide-name"></h2><p id="guide-description"></p><p id="guide-tip"></p>
-                <p>左：← / Z<br>右：→ / スラッシュ<br>発射：Space / Enter<br>揺らす：Q（2秒間隔）</p>
+                <p>左：← / Z<br>右：→ / スラッシュ<br>発射：Space / Enter<br>揺らす：Q（2秒間隔）<br>特殊／チャージ：E（対応する台）</p>
                 <p>画面下のボタンでも操作できます。<br>1ゲーム3球、全バンパーで +1,000点。</p></section>
             <div id="editor-controls">
             <h2>ピンボールエディター</h2>
@@ -246,6 +254,8 @@
                 <button id="add-bumper-button">バンパーを追加</button>
                 <button id="add-flipper-button">フリッパーを追加</button>
                 <button id="add-ball-button">ボール追加位置</button>
+                <label for="feature-preset">仕掛けプリセット</label><select id="feature-preset" class="property-input"></select>
+                <button id="add-feature-button">仕掛けを追加</button>
             </div>
             
             <div class="property-group object-list">
@@ -456,7 +466,7 @@ class SceneSkin {
     }
     refresh(object) {
         const view = this.views.get(object); if (!view || !object.gameObject) return;
-        const signature = [object.type, object.width, object.height, object.color.toLowerCase(), object.isLeft].join(':');
+        const signature = [object.type, object.width, object.height, object.color.toLowerCase(), object.isLeft, JSON.stringify(object.entity)].join(':');
         if (signature !== view.signature) {
             view.container.removeAll(true); view.signature = signature; view.cap = view.glow = view.selection = null;
             view.skinned = this.build(object, view);
@@ -491,6 +501,15 @@ class SceneSkin {
             v.glow = add(this.image('bumper-glow', 0, 0, scale)).setVisible(false);
             v.cap = add(this.image('bumper-normal', 0, 0, scale)); return true;
         }
+        if(o.type==='device'){
+            const g=this.scene.add.graphics(),color=parseInt(o.color.slice(1),16);add(g);
+            g.fillStyle(0x102334,.94);g.lineStyle(3,color,.9);
+            if(o.radius!==undefined){g.fillCircle(0,0,o.radius);g.strokeCircle(0,0,o.radius);g.lineStyle(1,color,.45);g.strokeCircle(0,0,o.radius*.75);}
+            else{g.fillRect(-o.width/2,-o.height/2,o.width,o.height);g.strokeRect(-o.width/2,-o.height/2,o.width,o.height);}
+            const f=o.entity?.components?.field;
+            if(f){g.lineStyle(1,color,.25);g.strokeCircle(0,0,f.radius);const a=f.direction*Math.PI/180;g.lineStyle(3,color,.9);const x=Math.cos(a)*18,y=Math.sin(a)*18;g.lineBetween(-x,-y,x,y);g.lineBetween(x,y,x-Math.cos(a-.6)*10,y-Math.sin(a-.6)*10);g.lineBetween(x,y,x-Math.cos(a+.6)*10,y-Math.sin(a+.6)*10);}
+            return true;
+        }
         return false;
     }
     select(object, selected) {
@@ -498,7 +517,7 @@ class SceneSkin {
         const g = view.selection; g.clear();
         if (!selected || !view.skinned) return;
         g.lineStyle(2, 0xffff00, 1);
-        if (object.type === 'ball' || object.type === 'bumper') g.strokeCircle(0, 0, object.radius);
+        if (object.radius !== undefined) g.strokeCircle(0, 0, object.radius);
         else g.strokeRect(-object.width / 2, -object.height / 2, object.width, object.height);
     }
     flash(object) {
@@ -537,10 +556,666 @@ class SceneSkin {
 }
 
 
+
         const DEFAULT_BOARD = Object.freeze({ width: 800, height: 1000 });
         const STORAGE_KEY = 'pinballLayout';
         const LEGACY_BACKUP_KEY = 'pinballLayoutLegacyBackup';
         const $ = id => document.getElementById(id);
+
+        // Declarative entity definitions. No executable text is accepted from layouts.
+class EntityModel {
+    static events = new Set(['spawn', 'tick', 'contact', 'enter', 'stay', 'exit', 'destroy', 'capture', 'release', 'chargeFull', 'input.down', 'input.hold', 'input.up', 'input.cancel', 'input.double', 'input.command', 'signal']);
+    static operations = new Set(['accelerate','impulse','velocity','redirect','reflect','teleport','capture','release','damage','heal','charge','score','split','fire','destroy','state','signal','modify']);
+    static expressionOps = {
+        add:[2,8], sub:[2,2], mul:[2,8], div:[2,2], mod:[2,2], pow:[2,2], min:[1,8], max:[1,8], clamp:[3,3],
+        abs:[1,1], sqrt:[1,1], sin:[1,1], cos:[1,1], atan2:[2,2], eq:[2,2], ne:[2,2], gt:[2,2], gte:[2,2], lt:[2,2], lte:[2,2],
+        and:[1,8], or:[1,8], not:[1,1], vec:[2,2], length:[1,1], normalize:[1,1], dot:[2,2], distance:[2,2], has:[2,2]
+    };
+    static fail(message) { throw new Error('拡張設定: ' + message); }
+    static clone(value) { return JSON.parse(JSON.stringify(value)); }
+    static object(value, keys, name) {
+        if (!value || typeof value !== 'object' || Array.isArray(value)) this.fail(name + 'はオブジェクトで指定してください。');
+        for (const key of Object.keys(value)) if (!keys.includes(key)) this.fail(name + 'の未対応項目: ' + key);
+        return value;
+    }
+    static num(value, fallback, min, max, name) {
+        const n = value === undefined ? fallback : value;
+        if (typeof n !== 'number' || !Number.isFinite(n) || n < min || n > max) this.fail(name + 'は' + min + '～' + max + 'です。');
+        return n;
+    }
+    static str(value, fallback, name, max = 100) {
+        const s = value === undefined ? fallback : value;
+        if (typeof s !== 'string' || s.length > max || /[<>\u0000]/.test(s)) this.fail(name + 'が不正です。');
+        return s;
+    }
+    static bool(value, fallback, name) {
+        if (value === undefined) return fallback;
+        if (typeof value !== 'boolean') this.fail(name + 'はtrue/falseです。');
+        return value;
+    }
+    static choice(value, fallback, choices, name) {
+        value ??= fallback;
+        if (!choices.includes(value)) this.fail(name + 'が未対応です。');
+        return value;
+    }
+    static vector(value, fallback = [0,0], max = 100000) {
+        value ??= fallback;
+        if (!Array.isArray(value) || value.length !== 2) this.fail('ベクトルは2要素です。');
+        return value.map(n => this.num(n, 0, -max, max, 'ベクトル'));
+    }
+    static identifier(value, fallback = '') {
+        value = this.str(value, fallback, 'ID', 80);
+        if (value && !/^[a-zA-Z0-9_-]+$/.test(value)) this.fail('IDは英数字・_・-で指定してください。');
+        return value;
+    }
+    static expression(value, depth = 0) {
+        if (depth > 12) this.fail('式は12段までです。');
+        if (typeof value === 'number') return this.num(value, 0, -1e9, 1e9, '式の数値');
+        if (typeof value === 'boolean' || value === null) return value;
+        if (typeof value === 'string') return this.str(value, '', '式の文字列');
+        if (Array.isArray(value)) return this.vector(value);
+        if (value?.ref !== undefined) {
+            this.object(value, ['ref'], '参照');
+            if (typeof value.ref !== 'string' || !/^(self|other|event|input|world)(\.[a-zA-Z][a-zA-Z0-9_]*){1,5}$/.test(value.ref) || /(__proto__|prototype|constructor)/.test(value.ref)) this.fail('参照先が不正です。');
+            return { ref: value.ref };
+        }
+        this.object(value, ['op','args'], '式');
+        const arity = this.expressionOps[value.op];
+        if (!arity || !Array.isArray(value.args) || value.args.length < arity[0] || value.args.length > arity[1]) this.fail('式の演算または引数が不正です。');
+        return { op: value.op, args: value.args.map(a => this.expression(a, depth + 1)) };
+    }
+    static evaluate(e, context) {
+        if (!e || typeof e !== 'object') return e;
+        if (Array.isArray(e)) return [...e];
+        if (e.ref) {
+            let result = context;
+            for (const key of e.ref.split('.')) {
+                if (!result || !Object.prototype.hasOwnProperty.call(result, key)) return null;
+                result = result[key];
+            }
+            return result;
+        }
+        const a = e.args.map(x => this.evaluate(x, context));
+        const numeric = () => a.every(v => typeof v === 'number' && Number.isFinite(v));
+        const vector = v => Array.isArray(v) && v.length === 2 && v.every(Number.isFinite);
+        let result;
+        switch (e.op) {
+            case 'and': return a.every(Boolean); case 'or': return a.some(Boolean); case 'not': return !a[0];
+            case 'eq': return a[0] === a[1]; case 'ne': return a[0] !== a[1];
+            case 'has': return Array.isArray(a[0]) && a[0].includes(a[1]);
+            case 'length': return vector(a[0]) ? Math.hypot(...a[0]) : null;
+            case 'normalize': { if (!vector(a[0])) return null; const n = Math.hypot(...a[0]); return n ? a[0].map(x => x/n) : [0,0]; }
+            case 'distance': return vector(a[0]) && vector(a[1]) ? Math.hypot(a[0][0]-a[1][0],a[0][1]-a[1][1]) : null;
+            case 'dot': return vector(a[0]) && vector(a[1]) ? a[0][0]*a[1][0]+a[0][1]*a[1][1] : null;
+        }
+        if (!numeric()) return null;
+        switch (e.op) {
+            case 'add': result=a.reduce((x,y)=>x+y,0); break; case 'sub': result=a[0]-a[1]; break;
+            case 'mul': result=a.reduce((x,y)=>x*y,1); break; case 'div': result=a[0]/a[1]; break;
+            case 'mod': result=a[0]%a[1]; break; case 'pow': result=a[0]**a[1]; break;
+            case 'min': result=Math.min(...a); break; case 'max': result=Math.max(...a); break;
+            case 'clamp': result=Math.max(a[1],Math.min(a[2],a[0])); break;
+            case 'abs': result=Math.abs(a[0]); break; case 'sqrt': result=Math.sqrt(a[0]); break;
+            case 'sin': result=Math.sin(a[0]); break; case 'cos': result=Math.cos(a[0]); break; case 'atan2': result=Math.atan2(a[0],a[1]); break;
+            case 'gt': return a[0]>a[1]; case 'gte': return a[0]>=a[1]; case 'lt': return a[0]<a[1]; case 'lte': return a[0]<=a[1];
+            case 'vec': return a;
+        }
+        return Number.isFinite(result) ? result : null;
+    }
+    static normalize(value, type) {
+        if (value === undefined || value === null) return null;
+        this.object(value, ['version','id','prototype','roles','tags','owner','links','physics','motion','components','state','rules','attachment','regions'], 'entity');
+        if (value.version !== undefined && value.version !== 1) this.fail('entity.versionは1です。');
+        const out = { version:1, id:this.identifier(value.id), roles:value.roles ?? [type === 'ball' ? 'projectile' : type === 'flipper' ? 'flipper' : 'object'], tags:value.tags ?? [] };
+        for (const key of ['roles','tags']) {
+            if (!Array.isArray(out[key]) || out[key].length > 16) this.fail(key + 'は16個までです。');
+            out[key] = out[key].map(x=>this.identifier(x));
+        }
+        if (out.roles.some(x=>!['object','projectile','flipper'].includes(x))) this.fail('rolesが不正です。');
+        if (value.prototype !== undefined) out.prototype=this.identifier(value.prototype);
+        if (value.owner !== undefined) out.owner=this.identifier(value.owner);
+        if (value.links) {
+            if (typeof value.links !== 'object' || Array.isArray(value.links) || Object.keys(value.links).length>16) this.fail('linksは16件までです。');
+            out.links={}; for(const [k,v] of Object.entries(value.links)) { this.identifier(k); if(['__proto__','constructor','prototype'].includes(k))this.fail('リンク名が不正です。');out.links[k]=this.identifier(v); }
+        }
+        if (value.physics) {
+            const p=this.object(value.physics,['mass','gravityScale','frictionAir','ballCollision'],'physics');out.physics={};
+            if(p.mass!==undefined)out.physics.mass=this.num(p.mass,1,.01,1000,'質量');
+            if(p.gravityScale!==undefined)out.physics.gravityScale=this.num(p.gravityScale,1,-5,5,'重力倍率');
+            if(p.frictionAir!==undefined)out.physics.frictionAir=this.num(p.frictionAir,.001,0,1,'空気摩擦');
+            if(p.ballCollision!==undefined)out.physics.ballCollision=this.bool(p.ballCollision,true,'球同士の衝突');
+        }
+        if(value.motion) {
+            const m=this.object(value.motion,['kind','mode','range','period','phase','angularSpeed','points','loop','x','y','angle','stiffness','damping'],'motion');
+            const kind=this.choice(m.kind,'wave',['none','linear','wave','orbit','path','formula'],'軌道');
+            out.motion={kind,mode:this.choice(m.mode,'direct',['direct','force'],'運動方法'),range:this.vector(m.range,[70,0],2000),period:this.num(m.period,4,.2,120,'周期'),phase:this.num(m.phase,0,-3600,3600,'位相'),angularSpeed:this.num(m.angularSpeed,0,-720,720,'回転速度')};
+            out.motion.stiffness=this.num(m.stiffness,8,0,100,'追従の強さ');out.motion.damping=this.num(m.damping,3,0,30,'追従の減衰');
+            if(kind==='path') { if(!Array.isArray(m.points)||m.points.length<2||m.points.length>32)this.fail('経路は2～32点です。');out.motion.points=m.points.map(v=>this.vector(v));out.motion.loop=this.bool(m.loop,true,'経路ループ'); }
+            if(kind==='formula') { out.motion.x=this.expression(m.x??0);out.motion.y=this.expression(m.y??0);if(m.angle!==undefined)out.motion.angle=this.expression(m.angle); }
+        }
+        if(value.attachment) {
+            const a=this.object(value.attachment,['target','offset','angle','onParentDestroyed'],'attachment');
+            out.attachment={target:this.identifier(a.target),offset:this.vector(a.offset),angle:this.num(a.angle,0,-360,360,'相対角度'),onParentDestroyed:this.choice(a.onParentDestroyed,'detach',['detach','destroy'],'親の破壊時')};
+        }
+        if(value.regions) {
+            if(!Array.isArray(value.regions)||value.regions.length>8)this.fail('検知領域は8個までです。');
+            out.regions=value.regions.map(r=>{
+                this.object(r,['id','shape','offset','radius','width','height','angle'],'領域');
+                return {id:this.identifier(r.id,'zone'),shape:this.choice(r.shape,'circle',['circle','rectangle'],'領域形状'),offset:this.vector(r.offset),radius:this.num(r.radius,50,.5,2000,'領域半径'),width:this.num(r.width,100,1,4000,'領域幅'),height:this.num(r.height,100,1,4000,'領域高さ'),angle:this.num(r.angle,0,-180,180,'領域角度')};
+            });
+            if(new Set(out.regions.map(r=>r.id)).size!==out.regions.length)this.fail('領域IDが重複しています。');
+        }
+        if(value.components) {
+            const c=this.object(value.components,['health','attack','charge','field','capture','warp','split','absorber','flipper','lifetime'],'components');out.components={};
+            const numeric=(name,fields)=>{if(!c[name])return;this.object(c[name],Object.keys(fields),name);const d={};for(const[k,v]of Object.entries(fields))d[k]=this.num(c[name][k],...v,k);out.components[name]=d;};
+            numeric('health',{max:[30,1,1e6],armor:[0,0,1e6],score:[100,0,1e6]});
+            numeric('attack',{damage:[10,0,1e6]});numeric('charge',{maximum:[100,1,1e6],rate:[25,0,10000],initial:[0,0,1e6]});numeric('lifetime',{seconds:[12,.1,300]});
+            if(c.field) {
+                const f=this.object(c.field,['kind','radius','strength','direction','maxSpeed','turnRate'],'field');
+                out.components.field={kind:this.choice(f.kind,'accelerate',['accelerate','attract','repel','vortex','redirect','brake'],'力場'),radius:this.num(f.radius,90,1,600,'範囲'),strength:this.num(f.strength,600,0,10000,'力場の強さ'),direction:this.num(f.direction,-90,-3600,3600,'方向'),maxSpeed:this.num(f.maxSpeed,1100,1,1320,'速度上限'),turnRate:this.num(f.turnRate,360,1,1440,'旋回速度')};
+            }
+            if(c.capture) {
+                const a=this.object(c.capture,['hold','speed','direction','capacity','manual','chargeBoost'],'capture');
+                out.components.capture={hold:this.num(a.hold,2,.1,15,'保持時間'),speed:this.num(a.speed,650,60,1200,'解放速度'),direction:this.num(a.direction,-90,-3600,3600,'方向'),capacity:this.num(a.capacity,1,1,8,'捕獲数'),manual:this.bool(a.manual,false,'手動発射'),chargeBoost:this.num(a.chargeBoost,350,0,1000,'追加速度')};
+            }
+            if(c.warp) {
+                const w=this.object(c.warp,['target','direction','offset','cooldown','preserveSpeed'],'warp');
+                out.components.warp={target:this.identifier(w.target),direction:this.num(w.direction,-90,-3600,3600,'出口方向'),offset:this.num(w.offset,0,0,300,'出口距離'),cooldown:this.num(w.cooldown,.6,.15,5,'転送間隔'),preserveSpeed:this.bool(w.preserveSpeed,true,'速度維持')};
+            }
+            if(c.split) {
+                const s=this.object(c.split,['count','spread','speed','generations','cooldown','consumeParent'],'split');
+                out.components.split={count:this.num(s.count,3,2,8,'分裂数'),spread:this.num(s.spread,55,0,180,'拡散角'),speed:this.num(s.speed,0,0,1200,'子球速度'),generations:this.num(s.generations,1,1,3,'世代'),cooldown:this.num(s.cooldown,1,.1,30,'分裂間隔'),consumeParent:this.bool(s.consumeParent,true,'親球消費')};
+            }
+            if(c.absorber) {
+                const a=this.object(c.absorber,['gain','cost','count','spread','speed','direction','delay'],'absorber');
+                out.components.absorber={gain:this.num(a.gain,30,1,1000,'吸収量'),cost:this.num(a.cost,30,1,1000,'発射消費'),count:this.num(a.count,3,1,8,'弾数'),spread:this.num(a.spread,50,0,180,'拡散角'),speed:this.num(a.speed,650,60,1200,'発射速度'),direction:this.num(a.direction,-90,-3600,3600,'発射方向'),delay:this.num(a.delay,.5,0,3,'発射待ち')};
+            }
+            if(c.flipper) {
+                if(type!=='flipper')this.fail('フリッパー機能はflipperに付けてください。');
+                const f=this.object(c.flipper,['charge','chargeTime','boost','extend','extendTime','scatter','spread','cooldown','command'],'flipper');
+                out.components.flipper={charge:this.bool(f.charge,false,'チャージスウィング'),chargeTime:this.num(f.chargeTime,1,.2,5,'充填時間'),boost:this.num(f.boost,1.8,1,4,'駆動倍率'),extend:this.num(f.extend,0,0,100,'伸長量'),extendTime:this.num(f.extendTime,.3,.1,3,'伸長時間'),scatter:this.num(f.scatter,0,0,5,'追加弾'),spread:this.num(f.spread,35,0,120,'散弾角'),cooldown:this.num(f.cooldown,1.5,.2,15,'散弾間隔'),command:this.bool(f.command,false,'コマンド強化')};
+            }
+            for(const name of ['capture','split','absorber','flipper'])for(const key of ['count','capacity','generations','scatter'])if(out.components[name]?.[key]!==undefined&&!Number.isInteger(out.components[name][key]))this.fail(key+'は整数です。');
+            if(['capture','warp','split','absorber'].filter(k=>out.components[k]).length>1)this.fail('捕獲・ワープ・分裂・吸収は同じ物体に重複できません。');
+            if(out.components.charge&&out.components.charge.initial>out.components.charge.maximum)this.fail('初期チャージが上限を超えています。');
+        }
+        if(value.state) {
+            this.object(value.state,Object.keys(value.state).filter(k=>/^[a-zA-Z][a-zA-Z0-9_]*$/.test(k)&&!['constructor','prototype'].includes(k)),'state');
+            if(Object.keys(value.state).length>32)this.fail('状態変数は32個までです。');out.state={};
+            for(const[k,v]of Object.entries(value.state)){if(!['number','boolean','string'].includes(typeof v))this.fail('初期状態は数値・真偽値・文字列です。');out.state[k]=this.expression(v);}
+        }
+        if(value.rules) {
+            if(!Array.isArray(value.rules)||value.rules.length>32)this.fail('ルールは32個までです。');
+            out.rules=value.rules.map((r,i)=>{
+                this.object(r,['id','on','if','effects','priority','cooldown','limit','scope','exclusiveGroup','input','signal'],'ルール');
+                if(!this.events.has(r.on))this.fail('未対応イベント: '+r.on);
+                if(!Array.isArray(r.effects)||r.effects.length<1||r.effects.length>12)this.fail('作用は1～12個です。');
+                const rule={id:this.identifier(r.id,'rule-'+i),on:r.on,if:this.expression(r.if??true),priority:this.num(r.priority,0,-100,100,'優先度'),cooldown:this.num(r.cooldown,0,0,300,'間隔'),limit:this.num(r.limit,0,0,100000,'回数'),scope:this.choice(r.scope,'pair',['entity','pair','contact','swing','round','game'],'範囲'),exclusiveGroup:this.identifier(r.exclusiveGroup),effects:r.effects.map(e=>this.effect(e))};
+                if(r.input!==undefined)rule.input=this.choice(r.input,'action',['left','right','action'],'入力');
+                if(r.signal!==undefined)rule.signal=this.identifier(r.signal);
+                return rule;
+            });
+            if(new Set(out.rules.map(r=>r.id)).size!==out.rules.length)this.fail('ルールIDが重複しています。');
+        }
+        return out;
+    }
+    static effect(e) {
+        this.object(e,['op','target','value','vector','angle','space','count','spread','speed','consume','destination','key','name','duration','source','operation','stack','cost','resource'],'作用');
+        if(!this.operations.has(e.op))this.fail('未対応作用: '+e.op);
+        const out={op:e.op,target:this.str(e.target,'other','作用対象',80)};
+        if(!/^(self|other|owner|nearby|link:[a-zA-Z0-9_-]+)$/.test(out.target))this.fail('作用対象が不正です。');
+        for(const key of ['value','vector','angle','count','spread','speed','cost'])if(e[key]!==undefined)out[key]=this.expression(e[key]);
+        for(const key of ['destination','key','name','source','resource'])if(e[key]!==undefined)out[key]=this.identifier(e[key]);
+        if(e.space!==undefined)out.space=this.choice(e.space,'world',['world','self','projectile'],'座標系');
+        if(e.duration!==undefined)out.duration=this.num(e.duration,1,.01,300,'持続時間');
+        if(e.consume!==undefined)out.consume=this.bool(e.consume,false,'消費');
+        if(e.operation!==undefined)out.operation=this.choice(e.operation,'add',['add','multiply','set','min','max'],'補正');
+        if(e.stack!==undefined)out.stack=this.choice(e.stack,'refresh',['refresh','reject','independent'],'重ね方');
+        if(e.op==='modify'&&!['speed','attack','drive','gravity'].includes(e.key))this.fail('補正対象はspeed / attack / drive / gravityです。');
+        if(e.op==='state'&&!e.key)this.fail('stateにはkeyが必要です。');
+        return out;
+    }
+    static validateLayout(objects) {
+        const ids=new Map();
+        objects.forEach((o,i)=>{
+            if(o.entity&&!o.entity.id)o.entity.id='entity-'+i;
+            const id=o.entity?.id??'object-'+i;
+            if(ids.has(id))this.fail('IDが重複しています: '+id);ids.set(id,o);
+        });
+        for(const o of objects)if(o.entity){
+            const e=o.entity;
+            if(e.components?.warp&&!e.components.warp.target)this.fail('ワープ先のIDが必要です。');
+            const effects=(e.rules??[]).flatMap(r=>r.effects);
+            for(const effect of effects)if(effect.target.startsWith('link:')&&!e.links?.[effect.target.slice(5)])this.fail('作用のリンクが存在しません: '+effect.target);
+            const references=[...Object.values(e.links??{}),e.components?.warp?.target,e.attachment?.target,e.owner,...effects.map(x=>x.destination)].filter(Boolean);
+            for(const id of references)if(!ids.get(id)?.entity||id===e.id)this.fail('参照先が存在しないか、自分自身です: '+id);
+            if(e.motion?.mode==='direct'&&o.type==='flipper')this.fail('フリッパーには支点駆動を使用してください。');
+            if(e.attachment&&e.motion)this.fail('装着と軌道の同時指定はできません。');
+        }
+        for(const o of objects){const seen=new Set();let current=o;while(current?.entity?.attachment){const id=current.entity.id;if(seen.has(id))this.fail('装着が循環しています。');seen.add(id);current=ids.get(current.entity.attachment.target);}}
+    }
+}
+
+const ENTITY_PRESETS = {
+    accelerate:{name:'加速ゾーン',color:'#5ce7ba',sensor:true,components:{field:{kind:'accelerate',direction:-90,strength:750,radius:85}}},
+    redirect:{name:'方向転換ゾーン',color:'#8fe36f',sensor:true,components:{field:{kind:'redirect',direction:-50,radius:80,turnRate:540}}},
+    brake:{name:'減速ゾーン',color:'#b7d9ef',sensor:true,components:{field:{kind:'brake',strength:700,radius:75}}},
+    reflector:{name:'方向反射板',color:'#f7cf72',shape:'rectangle',width:120,height:18,rules:[{on:'contact',cooldown:.12,effects:[{op:'reflect',target:'other',angle:-90,speed:650}]}]},
+    magnet:{name:'吸引マグネット',color:'#ba93ff',components:{field:{kind:'attract',radius:155,strength:800}}},
+    repeller:{name:'反発マグネット',color:'#ff9e74',components:{field:{kind:'repel',radius:145,strength:900}}},
+    vortex:{name:'渦フィールド',color:'#8dbbff',sensor:true,components:{field:{kind:'vortex',radius:135,strength:700}}},
+    capture:{name:'吸着・自動解放',color:'#66dbed',sensor:true,components:{capture:{hold:1.1,speed:650,direction:-65}}},
+    warp:{name:'ワープ入口',color:'#c291ff',sensor:true,components:{warp:{target:'exit',direction:-90}}},
+    breakable:{name:'破壊できる壁',color:'#f3a476',shape:'rectangle',width:110,height:24,components:{health:{max:20,score:150}}},
+    destroyer:{name:'弾消去ゾーン',color:'#fa6986',sensor:true,rules:[{on:'contact',effects:[{op:'destroy',target:'other'},{op:'score',target:'self',value:75}]}]},
+    splitter:{name:'プリズム分裂',color:'#75ecff',sensor:true,components:{split:{count:3,spread:60,speed:620,generations:1}}},
+    absorber:{name:'吸収・再発射',color:'#e6c265',sensor:true,components:{charge:{maximum:120},absorber:{gain:30,cost:30,count:3,speed:620,direction:-90,delay:.6}}},
+    launcher:{name:'チャージ発射台',color:'#ffaa75',sensor:true,components:{charge:{maximum:100,rate:55},capture:{hold:6,speed:420,direction:-90,manual:true,chargeBoost:650}}},
+    moving:{name:'往復する壁',color:'#9eb5c8',shape:'rectangle',width:120,height:20,motion:{kind:'wave',range:[90,0],period:3}},
+    rotating:{name:'回転する反射板',color:'#e1c987',shape:'rectangle',width:130,height:16,motion:{kind:'none',angularSpeed:65}},
+    chargedFlipper:{name:'チャージフリッパー',type:'flipper',components:{flipper:{charge:true,chargeTime:.8,boost:2}}},
+    extendedFlipper:{name:'伸長フリッパー',type:'flipper',components:{flipper:{extend:45,extendTime:.3}}},
+    scatterFlipper:{name:'散弾フリッパー',type:'flipper',components:{flipper:{scatter:2,spread:38,cooldown:1.5}}}
+};
+function entityPresetRecord(key, x=400, y=400, id='feature') {
+    const p=ENTITY_PRESETS[key];if(!p)throw new Error('Unknown preset');
+    const entity={version:1,id,prototype:key};for(const k of ['components','motion','rules'])if(p[k])entity[k]=EntityModel.clone(p[k]);
+    if(p.type==='flipper')return {type:'flipper',x,y,width:120,height:24,isLeft:true,restAngle:22,flipAngle:-38,name:p.name,entity};
+    return {type:'device',x,y,width:p.width??64,height:p.height??64,radius:32,shape:p.shape??'circle',sensor:p.sensor??false,name:p.name,color:p.color,restitution:.8,entity};
+}
+
+        // Runtime-only state and effects. Layout definitions remain immutable during play.
+class EntityRuntime {
+    static MAX_BALLS = 24;
+    constructor(scene) {
+        this.scene=scene; this.time=0; this.dt=1/60; this.serial=0; this.contactSerial=0; this.frame=0;
+        this.records=new Map();this.byId=new Map();this.queue=[];this.removals=[];this.signals=[];this.pendingBursts=[];
+        this.input={left:false,right:false,action:false};this.lastTap={};this.sequence=[];this.cancelled=false;
+        this.seed=(scene.layoutData.seed??12345)>>>0;this.trace=[];this.eventBudget=0;this.round=0;
+        for(const o of scene.objects)this.register(o);
+        for(const o of [...this.records.keys()])this.emit(o,'spawn',null,{});
+        this.flush();
+    }
+    random() { this.seed=(Math.imul(this.seed,1664525)+1013904223)>>>0;return this.seed/4294967296; }
+    register(o, generation=0) {
+        const spec=o.entity??{},c=spec.components??{};
+        const r={uid:++this.serial,id:spec.id||'runtime-'+this.serial,spec,active:true,generation,born:this.time,health:c.health?.max??null,charge:c.charge?.initial??0,
+            vars:EntityModel.clone(spec.state??{}),timers:new Map(),counts:new Map(),zones:new Map(),held:[],heldBy:null,warpUntil:0,captureUntil:0,claimed:false,
+            base:{x:o.x,y:o.y,angle:o.angle,width:o.width,height:o.height,mass:o.gameObject?.body?.mass},modifiers:[],swing:0,chargeLevel:0,flipperState:'ready',releasedCharge:0};
+        o.runtime=r;this.records.set(o,r);this.byId.set(r.id,o);this.applyPhysics(o);
+        if(this.scene.add.graphics && (o.type==='device'||c.health||c.flipper)) {
+            r.graphics=this.scene.add.graphics().setDepth(30);
+            if(o.type==='device')r.label=this.scene.add.text(o.x,o.y,o.deviceLabel(),{fontSize:'12px',fontFamily:'Arial',color:'#f0fbff',fontStyle:'bold'}).setOrigin(.5).setDepth(31);
+        }
+        return r;
+    }
+    applyPhysics(o) {
+        const body=o.gameObject?.body,p=o.entity?.physics;
+        if(!body||!p)return;
+        if(p.mass!==undefined&&!body.isStatic)this.scene.matter.body.setMass(body,p.mass);
+        if(p.frictionAir!==undefined)body.frictionAir=p.frictionAir;
+        if(o.type==='ball')body.collisionFilter.mask=p.ballCollision===false?6:0xffffffff;
+    }
+    liveBalls() { return this.scene.balls.filter(b=>b.runtime?.active&&b.gameObject); }
+    hasPendingBalls() { return this.pendingBursts.length>0; }
+    body(o) { return o?.gameObject?.body; }
+    position(o) { const b=this.body(o);return b?b.position:{x:o?.x??0,y:o?.y??0}; }
+    velocity(o) { const v=this.body(o)?.velocity;return v?[v.x*60,v.y*60]:[0,0]; }
+    surfaceVelocity(o,point) {const v=this.velocity(o),p=this.position(o),w=(this.body(o)?.angularVelocity??0)*60;return[v[0]-w*(point[1]-p.y),v[1]+w*(point[0]-p.x)];}
+    angle(o) { return (this.body(o)?.angle??0)*180/Math.PI; }
+    vectorAt(angle,speed) { const a=angle*Math.PI/180;return [Math.cos(a)*speed,Math.sin(a)*speed]; }
+    setVelocity(o,v) { if(this.body(o)&&Array.isArray(v)&&v.length===2&&v.every(Number.isFinite))o.gameObject.setVelocity(Math.max(-1320,Math.min(1320,v[0]))/60,Math.max(-1320,Math.min(1320,v[1]))/60); }
+    addAcceleration(o,v) {
+        const b=this.body(o);if(!b||b.isStatic||!v?.every(Number.isFinite))return;
+        b.force.x+=b.mass*v[0]/1e6;b.force.y+=b.mass*v[1]/1e6;
+    }
+    view(o) {
+        if(!o)return null;const r=o.runtime,b=this.body(o),p=this.position(o),v=this.velocity(o);
+        return {id:r?.id,type:o.type,roles:r?.spec.roles??[o.type==='ball'?'projectile':o.type==='flipper'?'flipper':'object'],tags:r?.spec.tags??[],owner:r?.spec.owner??'',
+            position:[p.x,p.y],x:p.x,y:p.y,velocity:v,speed:Math.hypot(...v),angle:this.angle(o),mass:b?.mass??0,
+            health:r?.health??0,charge:r?.charge??0,heldCount:r?.held.length??0,active:r?.active??false,generation:r?.generation??0,state:{...r?.vars},age:this.time-(r?.born??0)};
+    }
+    context(self,other,event) {return {self:this.view(self),other:this.view(other),event,input:{...this.input},world:{time:this.time,dt:this.dt,balls:this.liveBalls().length,score:this.scene.score,round:this.round,random:this.random()}};}
+    target(e,self,other) {
+        if(e.target==='self')return [self];if(e.target==='other')return other?[other]:[];
+        if(e.target==='owner')return [this.byId.get(self.entity?.owner)].filter(Boolean);
+        if(e.target==='nearby'){const p=this.position(self);return this.liveBalls().filter(b=>Math.hypot(this.position(b).x-p.x,this.position(b).y-p.y)<(self.entity?.components?.field?.radius??150));}
+        if(e.target.startsWith('link:'))return [this.byId.get(self.entity?.links?.[e.target.slice(5)])].filter(Boolean);
+        return [];
+    }
+    emit(self,on,other,event={}) {
+        const r=self?.runtime;if(!r||!r.active||!r.spec.rules?.some(rule=>rule.on===on)||this.eventBudget++>512)return;
+        const ctx=this.context(self,other,event),groups=new Set();let overridesCollision=false;
+        const rules=[...(r.spec.rules??[])].filter(rule=>rule.on===on).sort((a,b)=>b.priority-a.priority||a.id.localeCompare(b.id));
+        for(const rule of rules){
+            if(rule.input&&rule.input!==event.action||rule.signal&&rule.signal!==event.name)continue;
+            if(rule.exclusiveGroup&&groups.has(rule.exclusiveGroup))continue;
+            let suffix='';if(rule.scope==='pair')suffix=other?.runtime?.uid??'';if(rule.scope==='contact')suffix=event.contactId??this.frame;if(rule.scope==='swing')suffix=r.swing;if(rule.scope==='round')suffix=this.round;
+            const key=rule.id+':'+suffix;
+            if((r.timers.get(key)??-1)>this.time||rule.limit&&(r.counts.get(key)??0)>=rule.limit||!EntityModel.evaluate(rule.if,ctx))continue;
+            r.timers.set(key,this.time+rule.cooldown);r.counts.set(key,(r.counts.get(key)??0)+1);
+            if(rule.exclusiveGroup)groups.add(rule.exclusiveGroup);
+            if(on==='contact'&&rule.effects.some(e=>['reflect','teleport','capture','destroy'].includes(e.op)))overridesCollision=true;
+            const evaluated=rule.effects.map(e=>{const effect={...e};for(const k of ['value','vector','angle','count','spread','speed','cost'])if(e[k]!==undefined)effect[k]=EntityModel.evaluate(e[k],ctx);return effect;});
+            for(const effect of evaluated)for(const target of this.target(effect,self,other))this.enqueue(()=>this.effect(effect,self,target,event));
+            if(this.trace.length<120)this.trace.push({time:this.time,id:r.id,rule:rule.id});
+        }
+        return overridesCollision;
+    }
+    enqueue(action) { if(this.queue.length<256)this.queue.push(action); }
+    flush() { let n=0;while(this.queue.length&&n++<512)this.queue.shift()();if(this.queue.length){this.queue=[];this.scene.app.notify?.('連鎖作用が上限に達しました。');}for(const remove of this.removals.splice(0))remove(); }
+    cancelInput() {
+        this.cancelled=true;this.sequence=[];this.lastTap={};
+        for(const [o,r]of this.records){r.chargeLevel=0;r.releasedCharge=0;r.flipperState='ready';r.down=false;if(o.type==='flipper')o.reset();if(r.spec.components?.capture?.manual)r.charge=0;}
+        for(const action of ['left','right','action'])if(this.input[action])for(const o of this.records.keys())this.emit(o,'input.cancel',null,{action});
+        this.input={left:false,right:false,action:false};
+    }
+    readInput() {
+        const keys=this.scene.keys??{},touch=this.scene.app.touch??{};
+        const next={left:!!(keys.left?.isDown||keys.z?.isDown||touch.left?.size),right:!!(keys.right?.isDown||keys.slash?.isDown||touch.right?.size),action:!!(keys.action?.isDown||this.scene.app.actionDown)};
+        const cancelled=this.cancelled;this.cancelled=false;
+        for(const action of ['left','right','action']){
+            if(next[action]&&!this.input[action]) {
+                if(action==='action')this.actionHeldSince=this.time;
+                for(const o of this.records.keys())this.emit(o,'input.down',null,{action});
+                if(this.time-(this.lastTap[action]??-99)<.35){for(const o of this.records.keys())this.emit(o,'input.double',null,{action});if(action==='action')this.boostCharge(25);}
+                this.lastTap[action]=this.time;this.sequence.push({action,time:this.time});this.sequence=this.sequence.filter(i=>this.time-i.time<=1.4).slice(-3);
+                if(this.sequence.map(i=>i.action).join(',')==='left,right,action'){
+                    for(const[o,r]of this.records){this.emit(o,'input.command',null,{action,name:'left-right-action'});if(r.spec.components?.flipper?.command)r.commandUntil=this.time+6;}
+                    this.boostCharge(50);this.sequence=[];this.scene.app.notify?.('コマンド成立：6秒間、散弾を強化！');
+                }
+            }
+            if(!next[action]&&this.input[action]&&!cancelled){
+                for(const o of this.records.keys())this.emit(o,'input.up',null,{action});
+                if(action==='action'){if(this.time-(this.actionHeldSince??this.time)<.18)this.boostCharge(10);else for(const[o,r]of this.records)if(r.spec.components?.capture?.manual&&r.held.length)this.enqueue(()=>this.releaseAll(o));}
+            }
+            if(next[action])for(const o of this.records.keys())this.emit(o,'input.hold',null,{action});
+        }
+        this.input=next;
+    }
+    boostCharge(amount) {for(const[o,r]of this.records)if(r.spec.components?.charge&&r.held.length)this.charge(o,amount);}
+    beforeStep(delta=1000/60) {
+        if(this.scene.waitingLaunch||this.scene.isGameOver)return;
+        this.dt=Math.min(.05,Math.max(.001,delta/1000));this.time+=this.dt;this.frame++;this.eventBudget=0;
+        for(const r of this.records.values()){r.claimed=false;for(const[k,t]of r.timers)if(t<this.time)r.timers.delete(k);while(r.counts.size>256)r.counts.delete(r.counts.keys().next().value);r.modifiers=r.modifiers.filter(m=>m.until>this.time);}
+        this.readInput();
+        const signals=this.signals.splice(0,64);for(const s of signals)if(s.target.runtime?.active)this.emit(s.target,'signal',s.source,{name:s.name,value:s.value});
+        for(const[o,r]of [...this.records]){
+            if(!r.active)continue;const c=r.spec.components??{},body=this.body(o);
+            if(c.lifetime&&this.time-r.born>c.lifetime.seconds)this.enqueue(()=>this.destroy(o));
+            if(o.type==='ball'&&r.heldBy){this.positionHeld(o);continue;}
+            if(body&&!body.isStatic&&(r.spec.physics?.gravityScale!==undefined||r.modifiers.some(m=>m.key==='gravity'))){const g=this.scene.matter.world.engine.gravity,scale=g.scale??.001;body.force.x+=body.mass*g.x*scale*(this.modifier(o,'gravity',r.spec.physics?.gravityScale??1)-1);body.force.y+=body.mass*g.y*scale*(this.modifier(o,'gravity',r.spec.physics?.gravityScale??1)-1);}
+            this.move(o,r);
+            if(c.field&&r.vars.enabled!==false)this.field(o,c.field);
+            if(c.charge&&r.held.length&&this.input.action)this.charge(o,c.charge.rate*this.dt);
+            if(c.capture)for(const held of [...r.held])if(this.time-(held.runtime?.heldAt??0)>=c.capture.hold)this.enqueue(()=>this.release(o,held));
+            if(r.spec.regions)this.regions(o,r.spec.regions);
+            this.emit(o,'tick',null,{dt:this.dt});
+        }
+        this.flush();
+    }
+    move(o,r) {
+        const body=this.body(o);if(!body)return;
+        const attachment=r.spec.attachment;
+        if(attachment){const parent=this.byId.get(attachment.target);if(!parent?.runtime?.active){if(attachment.onParentDestroyed==='destroy')this.enqueue(()=>this.destroy(o));return;}const pos=this.position(parent),a=this.angle(parent)*Math.PI/180,[x,y]=attachment.offset;this.moveBody(o,pos.x+x*Math.cos(a)-y*Math.sin(a),pos.y+x*Math.sin(a)+y*Math.cos(a),(this.angle(parent)+attachment.angle)*Math.PI/180);return;}
+        const m=r.spec.motion;if(!m)return;
+        const t=this.time,phase=t/m.period+m.phase/360,a=phase*Math.PI*2;let x=0,y=0,angle=(r.base.angle+m.angularSpeed*t)*Math.PI/180;
+        if(m.kind==='linear'){const f=1-4*Math.abs(((phase+.25)%1+1)%1-.5);x=m.range[0]*f;y=m.range[1]*f;}
+        if(m.kind==='wave'){x=m.range[0]*Math.sin(a);y=m.range[1]*Math.sin(a);}
+        if(m.kind==='orbit'){x=m.range[0]*Math.sin(a);y=m.range[1]*(1-Math.cos(a));}
+        if(m.kind==='path'){let f=m.loop?((phase%1)+1)%1:Math.min(1,Math.max(0,phase));const segments=m.points.length-1,v=f*segments,i=Math.min(segments-1,Math.floor(v)),u=v-i;x=m.points[i][0]*(1-u)+m.points[i+1][0]*u;y=m.points[i][1]*(1-u)+m.points[i+1][1]*u;}
+        if(m.kind==='formula'){const ctx=this.context(o,null,{dt:this.dt});x=EntityModel.evaluate(m.x,ctx);y=EntityModel.evaluate(m.y,ctx);if(m.angle!==undefined)angle=EntityModel.evaluate(m.angle,ctx)*Math.PI/180;}
+        if(![x,y,angle].every(Number.isFinite)||Math.abs(x)>10000||Math.abs(y)>10000)return;
+        if(m.mode==='force'){const p=this.position(o),v=this.velocity(o);this.addAcceleration(o,[(r.base.x+x-p.x)*m.stiffness-v[0]*m.damping,(r.base.y+y-p.y)*m.stiffness-v[1]*m.damping]);}
+        else this.moveBody(o,r.base.x+x,r.base.y+y,angle);
+    }
+    moveBody(o,x,y,angle) {
+        const b=this.body(o);if(!b)return;
+        this.scene.matter.body.setPosition(b,{x,y},true);this.scene.matter.body.setAngle(b,angle,true);
+        o.gameObject.x=x;o.gameObject.y=y;o.gameObject.rotation=angle;
+    }
+    field(o,f) {
+        const center=this.position(o);
+        for(const ball of this.liveBalls()){
+            if(ball.runtime.heldBy)continue;const p=this.position(ball),dx=center.x-p.x,dy=center.y-p.y,d=Math.hypot(dx,dy);if(d>f.radius)continue;
+            const v=this.velocity(ball),speed=Math.hypot(...v);let a=[0,0];
+            if(f.kind==='accelerate'){if(speed<f.maxSpeed)a=this.vectorAt(f.direction+this.angle(o),f.strength);}
+            else if(f.kind==='brake'){const reduced=Math.max(60,speed-f.strength*this.dt);if(speed>60)this.setVelocity(ball,v.map(x=>x*reduced/speed));}
+            else if(f.kind==='redirect'){
+                if(speed>0){const target=(f.direction+this.angle(o))*Math.PI/180,current=Math.atan2(v[1],v[0]),error=Math.atan2(Math.sin(target-current),Math.cos(target-current)),step=f.turnRate*Math.PI/180*this.dt;
+                    this.setVelocity(ball,this.vectorAt((current+Math.max(-step,Math.min(step,error)))*180/Math.PI,Math.min(speed,f.maxSpeed)));}
+            }else if(d>1){const falloff=.25+.75*(1-d/f.radius),strength=f.strength*falloff;
+                if(f.kind==='attract')a=[dx/d*strength,dy/d*strength];
+                if(f.kind==='repel')a=[-dx/d*strength,-dy/d*strength];
+                if(f.kind==='vortex')a=[-dy/d*strength,dx/d*strength];}
+            this.addAcceleration(ball,a);
+        }
+    }
+    regions(o,regions) {
+        const p=this.position(o),r=o.runtime,angle=this.angle(o)*Math.PI/180;
+        for(const region of regions){const offset=region.offset,center={x:p.x+offset[0]*Math.cos(angle)-offset[1]*Math.sin(angle),y:p.y+offset[0]*Math.sin(angle)+offset[1]*Math.cos(angle)};
+            for(const ball of this.liveBalls()){
+                if(ball===o||ball.runtime.heldBy)continue;const b=this.position(ball),a=-(this.angle(o)+region.angle)*Math.PI/180,dx=b.x-center.x,dy=b.y-center.y,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a);
+                const inside=region.shape==='circle'?Math.hypot(dx,dy)<=region.radius+ball.radius:Math.abs(lx)<=region.width/2+ball.radius&&Math.abs(ly)<=region.height/2+ball.radius;
+                const key=region.id+':'+ball.runtime.uid,was=r.zones.get(key)??false;
+                if(inside){if(!was)this.emit(o,'enter',ball,{region:region.id});this.emit(o,'stay',ball,{region:region.id,dt:this.dt});}
+                else if(was)this.emit(o,'exit',ball,{region:region.id});if(inside)r.zones.set(key,true);else r.zones.delete(key);
+            }
+        }
+    }
+    controlFlipper(o,down) {
+        const r=o.runtime,f=r?.spec.components?.flipper;if(!f)return false;
+        if(down&&!r.down)r.swing++;
+        if(f.charge){
+            if(down){r.chargeLevel=Math.min(1,r.chargeLevel+this.dt/f.chargeTime);r.flipperState='charging';o.reset();}
+            else if(r.down){r.releasedCharge=r.chargeLevel;r.chargeLevel=0;r.flipperState='swing';r.swingUntil=this.time+.22+r.releasedCharge*.15;r.swing++;}
+            if(r.flipperState==='swing'){if(this.time<r.swingUntil)o.flip();else{r.flipperState='returning';o.reset();}}
+            else if(!down)o.reset();
+            o.driveMultiplier=o.isFlipping?1+(f.boost-1)*r.releasedCharge:1;
+        }else{if(down)o.flip();else o.reset();}
+        if(f.extend){
+            const target=r.base.width+(down?f.extend:0),step=f.extend/f.extendTime*this.dt,newWidth=o.width+Math.max(-step,Math.min(step,target-o.width));
+            if(Math.abs(newWidth-o.width)>.01)this.resizeFlipper(o,newWidth);
+        }
+        r.down=down;return true;
+    }
+    resizeFlipper(o,width) {
+        const b=this.body(o),angle=b.angle,velocity=b.angularVelocity;o.width=width;o.updateProperties();
+        const next=this.body(o),offset=(o.isLeft?1:-1)*width/2;
+        this.scene.matter.body.setAngle(next,angle);this.scene.matter.body.setPosition(next,{x:o.x+offset*Math.cos(angle),y:o.y+offset*Math.sin(angle)});
+        this.scene.matter.body.setAngularVelocity(next,velocity);o.gameObject.rotation=angle;o.gameObject.x=next.position.x;o.gameObject.y=next.position.y;
+    }
+    flipperHit(o,ball) {
+        const r=o.runtime,f=r?.spec.components?.flipper;if(!f||!o.isFlipping)return;
+        if(f.charge)ball.runtime.attackBoost=1+3*r.releasedCharge;
+        if(f.scatter&&this.time>=(r.scatterAt??0)&&ball.runtime.generation<1){
+            r.scatterAt=this.time+f.cooldown;const count=Math.min(6,f.scatter+(r.commandUntil>this.time?2:0));
+            this.enqueue(()=>this.spawnFan(o,count,650,-90,f.spread,ball));
+        }
+    }
+    contact(a,b,pair) {
+        if(!a?.runtime?.active||!b?.runtime?.active)return;
+        const v=this.velocity(b),n=pair.collision?.normal??{x:0,y:-1};
+        const event={contactId:++this.contactSerial,normal:[n.x,n.y],velocity:v,point:[pair.collision?.supports?.[0]?.x??this.position(b).x,pair.collision?.supports?.[0]?.y??this.position(b).y],relativeSpeed:Math.hypot(v[0]-this.velocity(a)[0],v[1]-this.velocity(a)[1])};
+        const c=a.entity?.components??{},br=b.runtime;
+        if(b.type==='ball'&&!br.heldBy&&!br.claimed){
+            const suppress=()=>{pair.isSensor=true;br.claimed=true;};
+            if(c.warp&&this.time>=br.warpUntil){suppress();this.enqueue(()=>this.warp(a,b));}
+            else if(c.capture&&this.time>=br.captureUntil&&a.runtime.held.length<c.capture.capacity){suppress();this.enqueue(()=>this.capture(a,b));}
+            else if(c.absorber&&br.generation<1){suppress();this.enqueue(()=>this.absorb(a,b));}
+            else if(c.split&&br.generation<c.split.generations&&this.time>=(a.runtime.splitAt??0)){
+                suppress();a.runtime.splitAt=this.time+c.split.cooldown;this.enqueue(()=>this.split(b,c.split,a));
+            }
+        }
+        if(this.emit(a,'contact',b,event))pair.isSensor=true;
+        const attack=b.entity?.components?.attack?.damage??(b.type==='ball'?10:0);
+        if(c.health&&attack>0)this.enqueue(()=>this.damage(a,this.modifier(b,'attack',attack)*(br.attackBoost??1),b));
+        if(a.type==='flipper'&&b.type==='ball')this.flipperHit(a,b);
+    }
+    safePoint(source,ball,angle,offset=0) {
+        const p=this.position(source),r=ball.radius,base=(source.radius??Math.hypot(source.width,source.height)/2)+r+6+offset;
+        for(let distance=base;distance<base+200;distance+=12)for(const da of [0,-20,20,-45,45]){
+            const v=this.vectorAt(angle+da,distance),x=p.x+v[0],y=p.y+v[1];if(this.isClear(x,y,r,new Set([source,ball])))return{x,y};
+        }
+        return null;
+    }
+    isClear(x,y,r,ignore=new Set()) {
+        if(x<10+r||x>this.scene.board.width-10-r||y<10+r||y>this.scene.board.height-r)return false;
+        for(const o of this.scene.objects){const body=this.body(o);if(ignore.has(o)||!body||body.isSensor||o.runtime&&!o.runtime.active||o.runtime?.heldBy)continue;
+            const p=this.position(o),dx=x-p.x,dy=y-p.y;
+            if(o.radius!==undefined){if(Math.hypot(dx,dy)<o.radius+r+1)return false;}
+            else{const a=-body.angle,lx=dx*Math.cos(a)-dy*Math.sin(a),ly=dx*Math.sin(a)+dy*Math.cos(a),qx=Math.max(Math.abs(lx)-o.width/2,0),qy=Math.max(Math.abs(ly)-o.height/2,0);if(Math.hypot(qx,qy)<r+1)return false;}}
+        return true;
+    }
+    warp(source,ball) {
+        if(!ball.runtime?.active)return;const w=source.entity.components.warp,exit=this.byId.get(w.target);if(!exit?.runtime?.active)return;
+        const direction=w.direction+this.angle(exit),p=this.safePoint(exit,ball,direction,w.offset);
+        ball.runtime.warpUntil=this.time+w.cooldown;if(!p)return;
+        const speed=w.preserveSpeed?Math.max(240,Math.hypot(...this.velocity(ball))):650;
+        ball.gameObject.setPosition(p.x,p.y);this.setVelocity(ball,this.vectorAt(direction,Math.min(1200,speed)));this.scene.skin?.hit(p.x,p.y);
+    }
+    capture(source,ball) {
+        const r=source.runtime,c=source.entity?.components?.capture??{capacity:1};
+        if(!r?.active||!ball.runtime?.active||ball.runtime.heldBy||r.held.length>=c.capacity)return false;
+        r.held.push(ball);ball.runtime.heldBy=source;ball.runtime.heldAt=this.time;
+        ball.runtime.savedMask=this.body(ball).collisionFilter.mask;this.body(ball).collisionFilter.mask=0;
+        this.scene.matter.body.setStatic(this.body(ball),true);this.positionHeld(ball);this.emit(source,'capture',ball,{});return true;
+    }
+    positionHeld(ball) {
+        const holder=ball.runtime.heldBy;if(!holder?.runtime?.active){this.release(holder,ball);return;}
+        const p=this.position(holder),i=holder.runtime.held.indexOf(ball),n=holder.runtime.held.length;
+        ball.gameObject.setPosition(p.x+(i-(n-1)/2)*(ball.radius*2+3),p.y);this.setVelocity(ball,[0,0]);
+    }
+    releaseAll(source) {for(const ball of [...source.runtime.held])this.release(source,ball);source.runtime.charge=0;}
+    release(source,ball) {
+        if(!ball?.runtime?.heldBy)return false;
+        source??=ball.runtime.heldBy;const c=source.entity?.components?.capture??{direction:-90,speed:650,chargeBoost:0},r=source.runtime;
+        const angle=c.direction+this.angle(source),p=this.safePoint(source,ball,angle);
+        if(!p){if(this.time-ball.runtime.heldAt>17){this.destroy(ball);return true;}return false;}
+        r.held=r.held.filter(b=>b!==ball);ball.runtime.heldBy=null;ball.runtime.captureUntil=this.time+.8;
+        this.scene.matter.body.setStatic(this.body(ball),false);this.body(ball).collisionFilter.mask=ball.runtime.savedMask??0xffffffff;this.applyPhysics(ball);
+        ball.gameObject.setPosition(p.x,p.y);const q=r.charge/(source.entity?.components?.charge?.maximum??100),v=this.vectorAt(angle,Math.min(1200,c.speed+c.chargeBoost*q)),carrier=this.velocity(source);
+        this.setVelocity(ball,[v[0]+carrier[0],v[1]+carrier[1]]);this.emit(source,'release',ball,{});if(!r.held.length)r.charge=0;return true;
+    }
+    charge(o,amount) {
+        const r=o.runtime,c=o.entity?.components?.charge;if(!r||!c||!Number.isFinite(amount))return;
+        const old=r.charge;r.charge=Math.max(0,Math.min(c.maximum,r.charge+amount));if(old<c.maximum&&r.charge>=c.maximum)this.emit(o,'chargeFull',null,{});
+    }
+    absorb(source,ball) {
+        if(!source.runtime.active||!ball.runtime.active)return;const c=source.entity.components.absorber;
+        this.charge(source,c.gain);this.scene.addScore(50);this.destroy(ball);
+        if(source.runtime.charge>=c.cost&&this.liveBalls().length<EntityRuntime.MAX_BALLS){
+            source.runtime.charge-=c.cost;this.pendingBursts.push({due:this.time+c.delay,source,config:c});
+        }
+    }
+    split(ball,c,source=ball) {
+        if(!ball.runtime?.active)return 0;
+        const v=this.velocity(ball),speed=c.speed||Math.max(360,Math.hypot(...v)),angle=Math.atan2(v[1],v[0])*180/Math.PI;
+        const count=this.spawnFan(source,c.count,speed,angle,c.spread,ball);
+        if(count&&c.consumeParent)this.destroy(ball);return count;
+    }
+    spawnFan(source,count,speed,angle,spread,parent=null) {
+        if(!source?.gameObject||!Number.isFinite(count)||!Number.isFinite(speed)||!Number.isFinite(angle)||!Number.isFinite(spread))return 0;
+        count=Math.max(0,Math.min(8,Math.floor(count),EntityRuntime.MAX_BALLS-this.liveBalls().length));let created=0;
+        for(let i=0;i<count;i++){
+            const direction=angle+(count===1?0:(i/(count-1)-.5)*spread),radius=parent?.radius??9,probe={radius},pos=this.safePoint(source,probe,direction);
+            if(!pos)continue;
+            const inherited=parent?.entity?.components??{},entity={version:1,id:'spawn-'+(++this.serial),roles:['projectile'],owner:source.runtime?.id,
+                physics:{...EntityModel.clone(parent?.entity?.physics??{}),ballCollision:parent?.entity?.physics?.ballCollision??true},tags:EntityModel.clone(parent?.entity?.tags??[]),components:{lifetime:{seconds:12},attack:{damage:inherited.attack?.damage??10},...(inherited.health?{health:EntityModel.clone(inherited.health)}:{})}};
+            const ball=new Ball(this.scene,pos.x,pos.y,radius,{color:parent?.color??'#ffffff',restitution:parent?.restitution??.8,friction:parent?.friction??.005,isBallPositionMarker:false,entity});
+            this.scene.objects.push(ball);this.scene.balls.push(ball);const r=this.register(ball,(parent?.runtime.generation??0)+1);r.warpUntil=this.time+.25;r.captureUntil=this.time+.2;
+            this.setVelocity(ball,this.vectorAt(direction,Math.min(1200,Math.max(60,speed))));this.emit(ball,'spawn',null,{});created++;
+        }
+        return created;
+    }
+    damage(o,amount,source) {
+        const r=o.runtime,c=o.entity?.components?.health;if(!r?.active||!c||!Number.isFinite(amount))return;
+        r.health=Math.max(0,r.health-Math.max(0,amount-c.armor));if(r.health===0){this.scene.addScore(c.score);this.destroy(o,source);}
+    }
+    destroy(o,source=null,quiet=false) {
+        const r=o?.runtime;if(!r?.active)return;
+        if(!quiet)this.emit(o,'destroy',source,{});
+        for(const held of [...r.held]){if(!this.release(o,held)){held.runtime.heldBy=null;this.destroy(held);}}
+        if(r.heldBy)r.heldBy.runtime.held=r.heldBy.runtime.held.filter(b=>b!==o);
+        r.heldBy=null;r.active=false;r.graphics?.destroy();r.label?.destroy();r.graphics=r.label=null;
+        this.scene.skin?.hit(this.position(o).x,this.position(o).y);
+        if(o===this.scene.ball){this.body(o).collisionFilter.mask=0;o.gameObject.setVisible(false);this.scene.skin?.views.get(o)?.container.setVisible(false);return;}
+        this.body(o).collisionFilter.mask=0;
+        this.removals.push(()=>{for(const state of this.records.values())for(const key of state.zones.keys())if(key.endsWith(':'+r.uid))state.zones.delete(key);this.records.delete(o);this.byId.delete(r.id);this.scene.objects=this.scene.objects.filter(item=>item!==o);this.scene.balls=this.scene.balls.filter(item=>item!==o);o.destroy();});
+    }
+    modifier(o,key,fallback) {
+        let value=fallback;const mods=(o.runtime?.modifiers??[]).filter(m=>m.key===key);
+        for(const operation of ['add','multiply','set','min','max'])for(const m of mods.filter(x=>x.operation===operation)){
+            if(operation==='add')value+=m.value;if(operation==='multiply')value*=m.value;if(operation==='set')value=m.value;if(operation==='min')value=Math.max(value,m.value);if(operation==='max')value=Math.min(value,m.value);
+        }
+        return Number.isFinite(value)?value:fallback;
+    }
+    effect(e,self,target,event) {
+        if(!target?.runtime||!target.runtime.active&& !['score','signal','fire'].includes(e.op))return;
+        const r=target.runtime,b=this.body(target),number=(v,otherwise=0)=>typeof v==='number'&&Number.isFinite(v)?v:otherwise;
+        const vector=()=>{let v=Array.isArray(e.vector)?e.vector:[0,0];if(!v.every(Number.isFinite))return[0,0];const angle=e.space==='self'?this.angle(self):e.space==='projectile'?Math.atan2(...this.velocity(target).slice().reverse())*180/Math.PI:0,a=angle*Math.PI/180;return[v[0]*Math.cos(a)-v[1]*Math.sin(a),v[0]*Math.sin(a)+v[1]*Math.cos(a)];};
+        switch(e.op){
+            case 'accelerate': this.addAcceleration(target,vector());break;
+            case 'impulse': {const v=this.velocity(target),imp=vector(),mass=b?.mass??1;this.setVelocity(target,[v[0]+imp[0]/mass,v[1]+imp[1]/mass]);break;}
+            case 'velocity':this.setVelocity(target,vector());break;
+            case 'redirect':this.setVelocity(target,this.vectorAt(number(e.angle)+ (e.space==='self'?this.angle(self):0),number(e.speed,Math.hypot(...this.velocity(target)))));break;
+            case 'reflect':{
+                if(e.angle!==undefined){this.setVelocity(target,this.vectorAt(number(e.angle)+(e.space==='self'?this.angle(self):0),number(e.speed,Math.hypot(...(event.velocity??this.velocity(target))))));break;}
+                const n=event.normal??[0,-1],surface=this.surfaceVelocity(self,event.point??[self.x,self.y]),v=event.velocity??this.velocity(target),u=[v[0]-surface[0],v[1]-surface[1]],dot=u[0]*n[0]+u[1]*n[1],rest=number(e.value,1);
+                this.setVelocity(target,[surface[0]+u[0]-(1+rest)*dot*n[0],surface[1]+u[1]-(1+rest)*dot*n[1]]);break;}
+            case 'damage':this.damage(target,number(e.value),self);break;
+            case 'heal':if(r.health!==null)r.health=Math.min(target.entity.components.health.max,r.health+Math.max(0,number(e.value)));break;
+            case 'charge':this.charge(target,number(e.value));break;
+            case 'score':this.scene.addScore(Math.max(0,Math.min(1e6,number(e.value))));break;
+            case 'destroy':this.destroy(target,self);break;
+            case 'capture':if(target.type==='ball')this.capture(self,target);break;
+            case 'release':if(target.type==='ball')this.release(r.heldBy,target);else this.releaseAll(target);break;
+            case 'teleport':{const dest=this.byId.get(e.destination??self.entity?.links?.exit);if(dest&&target.type==='ball'&&this.time>=r.warpUntil){const p=this.safePoint(dest,target,number(e.angle,-90));if(p){target.gameObject.setPosition(p.x,p.y);r.warpUntil=this.time+.6;}}break;}
+            case 'split':if(target.type==='ball'&&r.generation<3)this.split(target,{count:number(e.count,3),spread:number(e.spread,45),speed:number(e.speed,600),consumeParent:e.consume??true},self);break;
+            case 'fire':{const cost=Math.max(0,number(e.cost)),resource=e.resource??'charge',balance=resource==='charge'?r.charge:number(r.vars[resource]);if(balance<cost)break;
+                const made=this.spawnFan(target,number(e.count,1),number(e.speed,600),number(e.angle,-90),number(e.spread,30));if(made){if(resource==='charge')r.charge-=cost;else r.vars[resource]=balance-cost;}break;}
+            case 'state':if(e.key&&!['__proto__','constructor','prototype'].includes(e.key)&&['boolean','number','string'].includes(typeof e.value))r.vars[e.key]=e.value;break;
+            case 'signal':if(this.signals.length<64)this.signals.push({target,source:self,name:e.name??'signal',value:e.value??0});break;
+            case 'modify':{
+                if(!['speed','attack','drive','gravity'].includes(e.key))break;const source=e.source??self.runtime.id;
+                if(e.stack==='reject'&&r.modifiers.some(m=>m.source===source&&m.key===e.key))break;
+                if(e.stack!=='independent')r.modifiers=r.modifiers.filter(m=>m.source!==source||m.key!==e.key);
+                if(r.modifiers.length<32)r.modifiers.push({source,key:e.key,value:number(e.value),operation:e.operation??'add',until:this.time+(e.duration??1)});break;
+            }
+        }
+    }
+    afterStep() {
+        if(this.scene.waitingLaunch||this.scene.isGameOver)return;
+        this.flush();
+        for(const burst of this.pendingBursts.filter(x=>x.due<=this.time))if(burst.source.runtime?.active){const c=burst.config;this.spawnFan(burst.source,c.count,c.speed,c.direction+this.angle(burst.source),c.spread);}
+        this.pendingBursts=this.pendingBursts.filter(x=>x.due>this.time);
+        for(const ball of this.liveBalls()){
+            if(ball.runtime.heldBy)this.positionHeld(ball);
+            else{const v=this.velocity(ball),speed=Math.hypot(...v),cap=this.modifier(ball,'speed',1320);if(speed>cap&&speed>0)this.setVelocity(ball,v.map(x=>x*cap/speed));}
+        }
+    }
+    draw() {
+        for(const[o,r]of this.records){if(!r.active)continue;const g=r.graphics;if(!g)continue;const p=this.position(o),c=r.spec.components??{};g.clear();
+            if(c.field){g.lineStyle(1,parseInt(o.color.slice(1),16),.35);g.strokeCircle(p.x,p.y,c.field.radius);const v=this.vectorAt(c.field.direction+this.angle(o),24);g.lineBetween(p.x-v[0],p.y-v[1],p.x+v[0],p.y+v[1]);}
+            const width=o.type==='flipper'?o.width:Math.max(50,o.width),y=p.y-(o.radius??o.height/2)-13;
+            if(c.health){g.fillStyle(0x15202c,.9);g.fillRect(p.x-width/2,y,width,5);g.fillStyle(0xffb074,1);g.fillRect(p.x-width/2,y,width*r.health/c.health.max,5);}
+            const q=c.flipper?.charge?r.chargeLevel:c.charge?r.charge/c.charge.maximum:0;
+            if(c.charge||c.flipper?.charge){g.lineStyle(3,0xffd568,.9);g.strokeCircle(p.x,p.y,(o.radius??18)+5);if(q>0){g.lineStyle(5,0x7beaff,1);g.beginPath();g.arc(p.x,p.y,(o.radius??18)+5,-Math.PI/2,-Math.PI/2+2*Math.PI*q);g.strokePath();}}
+            if(r.label){r.label.setPosition(p.x,p.y);r.label.setAlpha(r.held.length?.6:1);}
+        }
+    }
+    resetRound() {
+        this.round++;this.cancelInput();this.queue=[];this.signals=[];this.pendingBursts=[];
+        for(const ball of [...this.scene.balls])if(ball!==this.scene.ball)this.destroy(ball,null,true);
+        this.flush();
+        for(const[o,r]of this.records){r.held=[];r.zones.clear();r.claimed=false;r.modifiers=[];r.down=false;r.scatterAt=0;r.splitAt=0;}
+        const ball=this.scene.ball,r=ball.runtime;if(this.body(ball).isStatic)this.scene.matter.body.setStatic(this.body(ball),false);
+        r.heldBy=null;r.active=true;r.generation=0;r.born=this.time;r.health=ball.entity?.components?.health?.max??null;r.attackBoost=1;r.warpUntil=0;r.captureUntil=0;r.chargeLevel=0;
+        this.body(ball).collisionFilter.mask=0xffffffff;ball.gameObject.setVisible(true);this.scene.skin?.views.get(ball)?.container.setVisible(true);this.scene.skin?.refresh(ball);this.applyPhysics(ball);
+        for(const[o,state]of this.records)if(o.type==='flipper'&&Math.abs(o.width-state.base.width)>.01)this.resizeFlipper(o,state.base.width);
+    }
+    shutdown() {this.queue=[];this.removals=[];this.signals=[];this.pendingBursts=[];for(const r of this.records.values()){r.graphics?.destroy();r.label?.destroy();}this.records.clear();this.byId.clear();}
+}
 
         // The same schema-1 layouts drive the gallery previews and physics.
 const PINBALL_TABLES = (() => {
@@ -659,6 +1334,7 @@ class TableArcade {
     render() {
         const grid = $('table-grid'); grid.replaceChildren();
         PINBALL_TABLES.forEach((table, i) => {
+            if(this.filter==='lab'&&table.group!=='lab'||this.filter==='classic'&&table.group==='lab')return;
             const card = document.createElement('article'); card.className = 'table-card';
             card.style.setProperty('--table-accent', table.accent);
             card.innerHTML = `<div class="table-preview">${this.preview(table)}</div>
@@ -675,6 +1351,7 @@ class TableArcade {
     preview(table) {
         const objects = LayoutCodec.normalize(table.layout).objects;
         const shapes = objects.map(o => {
+            if(o.type==='device'){const color=o.color;if(o.shape==='circle')return `<circle cx="${o.x}" cy="${o.y}" r="${o.radius}" fill="${color}" fill-opacity="${o.sensor?.3:.7}" stroke="${color}" stroke-width="5"/><text x="${o.x}" y="${o.y+9}" text-anchor="middle" fill="#fff" font-size="25">${o.entity?.prototype==='warp'?'W':o.entity?.prototype==='splitter'?'S':'+'}</text>`;return `<rect x="${o.x-o.width/2}" y="${o.y-o.height/2}" width="${o.width}" height="${o.height}" fill="${color}" transform="rotate(${o.angle} ${o.x} ${o.y})"/>`;}
             if (o.type === 'bumper') return `<circle cx="${o.x}" cy="${o.y}" r="${o.radius}" fill="${table.accent}" fill-opacity=".22" stroke="${table.accent}" stroke-width="8"/>`;
             if (o.type === 'ball') return `<circle cx="${o.x}" cy="${o.y}" r="12" fill="#fff"/>`;
             const x = o.type === 'flipper' ? (o.isLeft ? 0 : -o.width) : -o.width / 2;
@@ -683,6 +1360,76 @@ class TableArcade {
         return `<svg viewBox="0 0 800 1000" aria-hidden="true" focusable="false"><path d="M12 990V12H788V990" fill="none" stroke="#40536b" stroke-width="18"/>${shapes}</svg>`;
     }
 }
+
+
+        // Ten authored feature tables, kept separate from the original ten layouts.
+const PINBALL_LAB_TABLES = (() => {
+    const rail=(x1,y1,x2,y2)=>({type:'wall',x:(x1+x2)/2,y:(y1+y2)/2,width:Math.hypot(x2-x1,y2-y1),height:24,angle:Math.atan2(y2-y1,x2-x1)*180/Math.PI,restitution:.65});
+    const bumper=(x,y,radius=30,score=120,entity)=>({type:'bumper',x,y,radius,score,restitution:1.15,...(entity?{entity}:{})});
+    const feature=(key,x,y,id,changes={})=>{
+        const o=entityPresetRecord(key,x,y,id);for(const k of ['radius','width','height','angle','color','sensor','name'])if(changes[k]!==undefined)o[k]=changes[k];
+        if(changes.components)for(const[k,v]of Object.entries(changes.components))o.entity.components={...o.entity.components,[k]:{...o.entity.components?.[k],...v}};
+        if(changes.motion)o.entity.motion=changes.motion;if(changes.rules)o.entity.rules=changes.rules;return o;
+    };
+    const flippers=(component)=>[true,false].map(isLeft=>({type:'flipper',x:isLeft?260:540,y:850,width:120,height:24,isLeft,restAngle:isLeft?22:-22,flipAngle:isLeft?-38:38,
+        ...(component?{entity:{version:1,id:isLeft?'left-paddle':'right-paddle',components:{flipper:component}}}:{})}));
+    const make=(id,name,accent,description,tip,control,objects,options={})=>({id,name,accent,description,tip,control,group:'lab',level:'試遊',target:options.target??2500,launch:{x:options.vx??1.5,y:-7},
+        layout:{schemaVersion:2,seed:options.seed??20261017,board:{width:800,height:1000},objects:[
+            rail(0,100,100,0),rail(700,0,800,100),rail(0,640,260,850),rail(540,850,800,640),...flippers(options.flipper),...objects,
+            {type:'ball',x:options.x??400,y:110,radius:10,isBallPositionMarker:true,entity:{version:1,id:'round-ball',roles:['projectile'],components:{attack:{damage:10}}}}
+        ]}});
+    return [
+        make('lab-accelerator','アクセル・サーキット','#5ce7ba','加速・減速・方向転換のフィールドを通り抜ける台。','BOOSTは上向き加速、TURNは左上へ旋回。SLOWで球速を落とします。','輪の中で力が作用します。',[
+            feature('accelerate',300,390,'boost',{components:{field:{radius:105,strength:850}}}),feature('redirect',530,430,'turn',{components:{field:{direction:-140,radius:95}}}),
+            feature('brake',400,630,'slow',{components:{field:{radius:85,strength:900}}}),bumper(235,230),bumper(540,240),bumper(400,505,26,150)
+        ],{x:300,vx:1}),
+        make('lab-mirrors','ミラー・ダンス','#f7cf72','回転・往復・波形の仕掛けで球の反射が変わる台。','REFLECTは上向きへ返します。動くレールの角度と位置を見て狙います。','回転と波形移動を観察できます。',[
+            feature('rotating',400,365,'rotor',{width:145}),feature('moving',235,535,'slider',{width:110,motion:{kind:'linear',range:[65,0],period:3.4}}),
+            feature('reflector',570,535,'mirror',{angle:-25,motion:{kind:'wave',range:[0,40],period:2.5},rules:[{on:'contact',cooldown:.15,effects:[{op:'reflect',angle:-120,speed:720}]}]}),
+            bumper(235,245),bumper(570,245),bumper(405,590,26,180)
+        ],{x:290,vx:2}),
+        make('lab-magnets','マグネット・ハーバー','#b793ff','引き寄せ・押し返し・一時吸着を組み合わせた港。','HOLDに入ると一時停止して自動発射。磁場の範囲は輪で示します。','捕獲した球は約1秒後に解放します。',[
+            feature('magnet',260,340,'pull',{components:{field:{radius:145,strength:650}}}),feature('repeller',560,385,'push',{components:{field:{radius:125,strength:750}}}),
+            feature('capture',400,530,'dock',{components:{capture:{hold:1.2,direction:-115,speed:650}}}),bumper(400,260,28,160),bumper(245,600,25),bumper(570,600,25)
+        ]),
+        make('lab-warps','ワープ・リンク','#c291ff','左右二組の入口と出口をつなぐ転送台。','同じ色のWARPが対です。転送後は少しの間、再転送されません。','出口の周囲が空いている方向へ転送します。',[
+            feature('warp',300,280,'portal-a',{color:'#bd91ff',components:{warp:{target:'portal-b',direction:25}}}),
+            feature('warp',560,540,'portal-b',{color:'#bd91ff',components:{warp:{target:'portal-a',direction:155}}}),
+            feature('warp',540,275,'portal-c',{color:'#65e4d4',components:{warp:{target:'portal-d',direction:-25}}}),
+            feature('warp',240,560,'portal-d',{color:'#65e4d4',components:{warp:{target:'portal-c',direction:150}}}),
+            bumper(400,390,42,200),bumper(400,650,26,150)
+        ],{x:280,vx:1}),
+        make('lab-breakers','ブレイク・ガーデン','#f3a476','耐久つきの壁を壊して道を開く台。VOIDは球を消します。','BREAKは2～3回当てると破壊。下部左右のVOIDを避けて中央へ戻します。','壁上のバーが残り耐久です。',[
+            ...[245,400,555].map((x,i)=>feature('breakable',x,350,'brick-'+i,{width:100,height:26})),
+            ...[310,490].map((x,i)=>feature('breakable',x,510,'brick-low-'+i,{width:105,height:24,components:{health:{max:30,score:220}}})),
+            feature('destroyer',135,585,'void-left',{radius:24}),feature('destroyer',665,585,'void-right',{radius:24}),
+            bumper(240,220,28,150),bumper(550,220,28,150),bumper(400,630,26,180)
+        ],{target:3500}),
+        make('lab-prisms','プリズム・スプリット','#75ecff','プリズムで球が3つに分裂。球同士も反射します。','同じ世代の球は繰り返し分裂しません。すべて失うと次の1球です。','追加球の寿命は12秒です。',[
+            feature('splitter',400,315,'prism',{radius:38,components:{split:{count:3,spread:100,speed:630}}}),bumper(230,440,34,150),bumper(570,440,34,150),bumper(400,575,34,150),
+            rail(110,300,180,410),rail(620,410,690,300)
+        ],{vx:0,target:4000}),
+        make('lab-recycler','リサイクル・リアクター','#e6c265','球を吸収してエネルギーに変え、散弾として再発射。','RECYCLEは元の球を消費し、少し待って3球を撃ち出します。','再発射待ちもラウンド継続中です。',[
+            feature('absorber',400,325,'reactor',{radius:42,components:{absorber:{gain:30,cost:30,count:3,spread:90,direction:-90,delay:.65}}}),
+            bumper(230,250,30,180),bumper(570,250,30,180),bumper(270,520,32,150),bumper(530,520,32,150),bumper(400,650,26,120)
+        ],{vx:0,target:4500}),
+        make('lab-launcher','チャージ・ランチャー','#ffaa75','球を装填し、チャージ量に応じて発射する台。','捕獲中にEまたは特殊ボタンを長押しし、離して発射。連打でも充填できます。','E：保持で充填／解除で発射。6秒で自動解放。',[
+            feature('launcher',400,350,'launcher',{radius:40,components:{capture:{direction:-115,hold:6}}}),
+            bumper(215,220,34,200),bumper(575,250,34,200),bumper(250,560,30,150),bumper(550,560,30,150),
+            feature('vortex',400,615,'swirl',{components:{field:{radius:100,strength:400}}})
+        ],{vx:0}),
+        make('lab-charge-swing','チャージ・スウィング','#ff879d','左右のフリッパーを溜めてから振る、タイミング重視の台。','左右を押している間は溜め、離すとスウィングします。満充填は約0.8秒です。','左右：押して溜める → 離して打つ。',[
+            bumper(260,280,36,180),bumper(540,280,36,180),bumper(400,420,40,250),
+            feature('breakable',400,610,'charge-target',{width:110,height:22,components:{health:{max:35,score:300}}}),
+            rail(110,450,180,555),rail(620,555,690,450)
+        ],{flipper:{charge:true,chargeTime:.8,boost:2.1},target:3500}),
+        make('lab-extend-burst','エクステンド・バースト','#93ed8c','伸びるフリッパーで打ち返すと追加の球が飛び出します。','押すと伸長。打ち返し時に散弾を追加します。左→右→Eの順に素早く押すと6秒間強化。','左→右→E：コマンド。特殊ボタンでもEを入力できます。',[
+            bumper(235,260,30,160),bumper(565,260,30,160),bumper(400,380,42,220),bumper(260,560,30,150),bumper(540,560,30,150),
+            feature('moving',400,650,'moving-guard',{width:95,motion:{kind:'wave',range:[60,0],period:3}})
+        ],{flipper:{extend:42,extendTime:.25,scatter:2,spread:45,cooldown:1.5,command:true},target:5000})
+    ];
+})();
+PINBALL_TABLES.push(...PINBALL_LAB_TABLES);
 
 
         // 保存・UI・プレイ開始で共通の検証を通す。現在の盤面は検証後に置換する。
@@ -710,11 +1457,12 @@ class TableArcade {
             }
 
             static object(data) {
-                if (!data || typeof data !== 'object' || !['wall', 'bumper', 'flipper', 'ball'].includes(data.type)) {
+                if (!data || typeof data !== 'object' || !['wall', 'bumper', 'flipper', 'ball', 'device'].includes(data.type)) {
                     throw new Error('未対応のオブジェクトが含まれています。');
                 }
                 const defaults = {
                     wall: { color: '#888888', restitution: 0.7 },
+                    device: { color: '#72dcff', restitution: 0.8 },
                     bumper: { color: '#00aaff', restitution: 1.5 },
                     flipper: { color: '#ff0000', restitution: 0.8 },
                     ball: { color: '#ffffff', restitution: 0.8 }
@@ -733,6 +1481,12 @@ class TableArcade {
                     name, color,
                     restitution: this.number(data.restitution, defaults.restitution, '反発係数', 0, 2)
                 };
+                if (data.type === 'device') {
+                    result.shape = EntityModel.choice(data.shape,'circle',['circle','rectangle'],'装置形状');
+                    result.sensor = EntityModel.bool(data.sensor,false,'接触領域');
+                    if(result.shape === 'circle') { result.radius=this.number(data.radius,result.width/2,'半径',.5,5000);result.width=result.height=result.radius*2; }
+                }
+                const entity=EntityModel.normalize(data.entity,data.type);if(entity)result.entity=entity;
                 if (data.type === 'wall') result.isStatic = this.boolean(data.isStatic, true, '固定状態');
                 if (data.type === 'bumper' || data.type === 'ball') {
                     result.radius = this.number(data.radius, result.width / 2, '半径', 0.5, 5000);
@@ -754,13 +1508,15 @@ class TableArcade {
 
             static normalize(data, fallbackBoard = DEFAULT_BOARD) {
                 if (!data || typeof data !== 'object' || !Array.isArray(data.objects)) throw new Error('objects配列がありません。');
-                if (data.schemaVersion !== undefined && data.schemaVersion !== 1) throw new Error('未対応の保存バージョンです。');
+                if (data.schemaVersion !== undefined && ![1,2].includes(data.schemaVersion)) throw new Error('未対応の保存バージョンです。');
                 if (data.objects.length > 1000) throw new Error('オブジェクトは1000個までです。');
                 const objects = data.objects.map(item => this.object(item));
                 if (objects.filter(item => item.type === 'ball').length > 1) throw new Error('開始位置マーカーは1個にしてください。');
-                const board = data.schemaVersion === 1 ? data.board : fallbackBoard;
+                const board = data.schemaVersion !== undefined ? data.board : fallbackBoard;
                 if (!board) throw new Error('盤面サイズがありません。');
-                return { schemaVersion: 1, board: this.board(board), objects };
+                EntityModel.validateLayout(objects);
+                if(data.seed!==undefined&&!Number.isInteger(data.seed))throw new Error('seedは整数で指定してください。');
+                return { schemaVersion: objects.some(o=>o.entity||o.type==='device')?2:1, board: this.board(board), objects, ...(data.seed!==undefined?{seed:this.number(data.seed,12345,'seed',0,4294967295)}:{}) };
             }
 
             // 旧コードが先頭に自動生成した3壁だけを候補とする。削除は画面で選択してもらう。
@@ -785,6 +1541,7 @@ class TableArcade {
                 this.activeTable = null;
                 this.arcade = new TableArcade(this);
                 this.touch = { left: new Set(), right: new Set() };
+                this.actionPointers = new Set();this.actionDown=false;
                 this.media = new PinballMedia(this);
                 this.audio = new PinballAudio(this.media, message => this.notify(message));
                 this.editor = new EditorScene(this);
@@ -810,7 +1567,7 @@ class TableArcade {
                 if (typeof ResizeObserver !== 'undefined') {
                     this.resizeObserver = new ResizeObserver(() => {
                         this.fitToolbar();
-                        if (this.mode !== 'loading' && this.game?.canvas) this.game.scale.refresh();
+                        if (this.mode !== 'loading' && this.game?.canvas) { this.game.scale.getParentBounds(); this.game.scale.refresh(); }
                     });
                     this.resizeObserver.observe($('phaser-stage'));
                     this.resizeObserver.observe($('control-panel'));
@@ -836,6 +1593,19 @@ class TableArcade {
                     this.startTable(PINBALL_TABLES[(index + 1) % PINBALL_TABLES.length].id);
                 });
                 $('launch-button').addEventListener('click', () => this.play.launchBall());
+                const actionButton=$('action-control');
+                actionButton.addEventListener('pointerdown',event=>{
+                    if(this.mode!=='play'||this.play.waitingLaunch)return;
+                    event.preventDefault();actionButton.setPointerCapture(event.pointerId);this.actionPointers.add(event.pointerId);this.actionDown=true;actionButton.classList.add('pressed');
+                });
+                for(const type of ['pointerup','pointercancel','lostpointercapture'])actionButton.addEventListener(type,event=>{
+                    const wasActive=this.actionPointers.has(event.pointerId);this.actionPointers.delete(event.pointerId);this.actionDown=this.actionPointers.size>0;
+                    if(type!=='pointerup'&&wasActive)this.play.runtime?.cancelInput();if(!this.actionDown)actionButton.classList.remove('pressed');
+                });
+                document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{
+                    this.arcade.filter=button.dataset.filter;this.arcade.render();
+                    document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+                }));
                 $('nudge-button').addEventListener('click', () => this.play.nudge());
                 for (const side of ['left', 'right']) {
                     const button = $(side + '-control');
@@ -845,7 +1615,8 @@ class TableArcade {
                         this.touch[side].add(event.pointerId); button.classList.add('pressed');
                     });
                     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, event => {
-                        this.touch[side].delete(event.pointerId);
+                        const wasActive=this.touch[side].has(event.pointerId);this.touch[side].delete(event.pointerId);
+                        if(type!=='pointerup'&&wasActive)this.play.runtime?.cancelInput();
                         if (!this.touch[side].size) button.classList.remove('pressed');
                     });
                 }
@@ -906,7 +1677,10 @@ class TableArcade {
                 $('restart-button').disabled = mode !== 'over';
                 $('score-display').style.display = playing ? 'block' : 'none';
                 $('table-info').hidden = !arcade;
-                $('play-controls').hidden = !arcade || mode === 'over';
+                $('play-controls').hidden = !playing || mode === 'over';
+                $('action-control').hidden = !this.play.layoutData?.objects.some(o=>o.entity);
+                $('launch-button').hidden = !arcade;
+                $('nudge-button').hidden = !arcade;
                 $('next-table-button').hidden = !arcade;
                 $('result-tables-button').hidden = !arcade;
                 $('tables-button').disabled = !editing && !playing;
@@ -918,6 +1692,7 @@ class TableArcade {
             releaseControls() {
                 for (const side of ['left', 'right']) { this.touch[side].clear(); $(side + '-control').classList.remove('pressed'); }
                 this.play?.input?.keyboard?.resetKeys();
+                this.actionPointers?.clear();this.actionDown=false;$('action-control').classList.remove('pressed');this.play?.runtime?.cancelInput();
             }
 
             openGallery() {
@@ -1037,12 +1812,13 @@ class TableArcade {
                 this.restitution = options.restitution ?? 0.7;
                 this.color = options.color ?? '#888888';
                 this.isBoundary = options.isBoundary === true;
+                this.entity = options.entity ? EntityModel.clone(options.entity) : null;
                 this.gameObject = null;
                 this.bodySize = null;
                 // 派生クラスの全属性が確定してからcreateGameObjectを呼ぶ。
             }
 
-            bodyOptions() { return { isStatic: true, restitution: this.restitution }; }
+            bodyOptions() { return { isStatic: this.entity?.motion?.mode!=='force', restitution: this.restitution }; }
             shape() { return { type: 'rectangle', width: this.width, height: this.height }; }
             bodyPosition() { return { x: this.x, y: this.y }; }
             displayAngle() { return this.angle; }
@@ -1069,7 +1845,7 @@ class TableArcade {
             updateProperties() {
                 if (!this.gameObject) return;
                 const go = this.gameObject;
-                if (this.type === 'bumper' || this.type === 'ball') {
+                if (this.radius !== undefined) {
                     this.width = this.height = this.radius * 2;
                     if (go.radius !== this.radius) go.setRadius(this.radius);
                 } else if (go.width !== this.width || go.height !== this.height) {
@@ -1101,7 +1877,7 @@ class TableArcade {
                 const dx = x - position.x, dy = y - position.y;
                 const localX = dx * Math.cos(angle) - dy * Math.sin(angle);
                 const localY = dx * Math.sin(angle) + dy * Math.cos(angle);
-                if (this.type === 'ball' || this.type === 'bumper') return Math.hypot(localX, localY) <= this.radius;
+                if (this.radius !== undefined) return Math.hypot(localX, localY) <= this.radius;
                 return Math.abs(localX) <= this.width / 2 && Math.abs(localY) <= this.height / 2;
             }
 
@@ -1118,7 +1894,7 @@ class TableArcade {
             serialize() {
                 return {
                     type: this.type, x: this.x, y: this.y, width: this.width, height: this.height,
-                    angle: this.angle, name: this.name, restitution: this.restitution, color: this.color
+                    angle: this.angle, name: this.name, restitution: this.restitution, color: this.color, ...(this.entity?{entity:EntityModel.clone(this.entity)}:{})
                 };
             }
 
@@ -1128,6 +1904,7 @@ class TableArcade {
                     case 'bumper': return new Bumper(scene, data.x, data.y, data.radius * 2, data);
                     case 'flipper': return new Flipper(scene, data.x, data.y, data.width, data.height, data);
                     case 'ball': return new Ball(scene, data.x, data.y, data.radius, data);
+                    case 'device': return new Device(scene,data.x,data.y,data.width,data.height,data);
                     default: throw new Error(`未対応の種類: ${data.type}`);
                 }
             }
@@ -1140,7 +1917,7 @@ class TableArcade {
                 this.isStatic = options.isStatic ?? true;
                 this.createGameObject();
             }
-            bodyOptions() { return { isStatic: this.isStatic, restitution: this.restitution }; }
+            bodyOptions() { return { isStatic: this.entity?.motion?.mode==='force'?false:this.isStatic, restitution: this.restitution }; }
             serialize() { return { ...super.serialize(), isStatic: this.isStatic }; }
         }
 
@@ -1222,8 +1999,8 @@ class TableArcade {
                 body.force.y -= body.mass * gravity.y * gravityScale;
                 const target = (this.isFlipping ? this.flipAngle : this.restAngle) * Math.PI / 180;
                 const error = Math.atan2(Math.sin(target - body.angle), Math.cos(target - body.angle));
-                const maxSpeed = this.scene.table ? .35 : .25;
-                this.matter.body.setAngularVelocity(body, Math.max(-maxSpeed, Math.min(maxSpeed, error * (this.scene.table ? .6 : .45))));
+                const maxSpeed = (this.scene.table ? .35 : .25) * (this.driveMultiplier??1) * (this.scene.runtime?.modifier(this,'drive',1)??1);
+                this.matter.body.setAngularVelocity(body, Math.max(-maxSpeed, Math.min(maxSpeed, error * (this.scene.table ? .6 : .45) * (this.driveMultiplier??1))));
             }
             serialize() {
                 return { ...super.serialize(), isLeft: this.isLeft, restAngle: this.restAngle, flipAngle: this.flipAngle };
@@ -1249,6 +2026,19 @@ class TableArcade {
             serialize() {
                 return { ...super.serialize(), radius: this.radius, friction: this.friction, isBallPositionMarker: this.isBallPositionMarker };
             }
+        }
+
+        class Device extends GameObject {
+            constructor(scene,x,y,width,height,options={}) {
+                super(scene,x,y,width,height,options);this.type='device';this.deviceShape=options.shape??'circle';this.sensor=options.sensor??false;
+                if(this.deviceShape==='circle'){this.radius=options.radius??width/2;this.width=this.height=this.radius*2;}
+                this.createGameObject();
+            }
+            createGameObject(){this.gameObject=this.radius!==undefined?this.scene.add.circle(this.x,this.y,this.radius,0xffffff):this.scene.add.rectangle(this.x,this.y,this.width,this.height,0xffffff);this.finishCreation();}
+            shape(){return this.radius!==undefined?{type:'circle',radius:this.radius}:super.shape();}
+            bodyOptions(){return{isStatic:this.entity?.motion?.mode!=='force',isSensor:this.sensor,restitution:this.restitution};}
+            deviceLabel(){const p=this.entity?.prototype;return({accelerate:'BOOST',redirect:'TURN',brake:'SLOW',reflector:'REFLECT',magnet:'PULL',repeller:'PUSH',vortex:'VORTEX',capture:'HOLD',warp:'WARP',breakable:'BREAK',destroyer:'VOID',splitter:'SPLIT',absorber:'RECYCLE',launcher:'CHARGE',moving:'MOVE',rotating:'ROTATE'})[p]??'DEVICE';}
+            serialize(){return{...super.serialize(),shape:this.deviceShape,sensor:this.sensor,...(this.radius!==undefined?{radius:this.radius}:{})};}
         }
 
         function createBoundaries(scene, board) {
@@ -1321,6 +2111,21 @@ class TableArcade {
                     this.objects.push(object);
                     this.selectObject(object);
                 };
+                for(const [key,preset]of Object.entries(ENTITY_PRESETS)){const option=document.createElement('option');option.value=key;option.textContent=preset.name;$('feature-preset').appendChild(option);}
+                this.bind('add-feature-button','click',()=>{
+                    if(this.app.mode!=='edit')return;
+                    const key=$('feature-preset').value;
+                    const id=prefix=>{let n=1;while(this.objects.some(o=>o.entity?.id===prefix+n))n++;return prefix+n;};
+                    const records=[entityPresetRecord(key,320,330,id('feature-'))];
+                    if(key==='warp'){const exit=entityPresetRecord('warp',550,220,id('exit-'));records[0].entity.components.warp.target=exit.entity.id;exit.entity.components.warp.target=records[0].entity.id;records.push(exit);}
+                    if(key.endsWith('Flipper')){records[0].x=230;records[0].y=850;}
+                    const staged=[];
+                    try{
+                        const layout=LayoutCodec.normalize({...this.getLayoutData(),objects:[...this.getLayoutData().objects,...records]});
+                        for(const record of layout.objects.slice(-records.length))staged.push(GameObject.deserialize(this,record));
+                        this.objects.push(...staged);this.selectObject(staged[0]);this.app.notify('仕掛けを追加しました。設定欄で挙動を編集できます。');
+                    }catch(error){staged.forEach(o=>o.destroy());this.app.notify(error.message,true);}
+                });
                 this.bind('add-wall-button', 'click', () => add(() => new Wall(this, 200, 200, 100, 20)));
                 this.bind('add-bumper-button', 'click', () => add(() => new Bumper(this, 200, 200, 40)));
                 this.bind('add-flipper-button', 'click', () => add(() => new Flipper(this, 150, this.board.height - 100, 100, 20)));
@@ -1400,13 +2205,13 @@ class TableArcade {
                 this.addPropertyField(form, 'name', '名前', object.name, 'text');
                 this.addPropertyField(form, 'x', object.type === 'flipper' ? '支点X' : 'X位置', object.x, 'number');
                 this.addPropertyField(form, 'y', object.type === 'flipper' ? '支点Y' : 'Y位置', object.y, 'number');
-                if (object.type === 'ball' || object.type === 'bumper') {
+                if (object.radius !== undefined) {
                     this.addPropertyField(form, 'radius', '半径', object.radius, 'number', 0.5, 5000, 0.5);
                 } else {
                     this.addPropertyField(form, 'width', '幅', object.width, 'number', 1, 10000);
                     this.addPropertyField(form, 'height', '高さ', object.height, 'number', 1, 10000);
                 }
-                if (object.type === 'wall') this.addPropertyField(form, 'angle', '角度', object.angle, 'number', -180, 180);
+                if (object.type === 'wall' || object.type === 'device') this.addPropertyField(form, 'angle', '角度', object.angle, 'number', -180, 180);
                 this.addPropertyField(form, 'restitution', '反発係数', object.restitution, 'number', 0, 2, 0.1);
                 this.addPropertyField(form, 'color', '色', object.color, 'color');
                 if (object.type === 'bumper') this.addPropertyField(form, 'score', 'スコア', object.score, 'number', 0, 1000000);
@@ -1432,6 +2237,15 @@ class TableArcade {
                     });
                     label.appendChild(select); form.appendChild(label);
                 }
+                const details=document.createElement('details');details.className='entity-settings';
+                const summary=document.createElement('summary');summary.textContent='挙動・条件の設定';details.appendChild(summary);
+                const hint=document.createElement('p');hint.className='help';hint.textContent='共通モデルのJSONです。適用時に検証します。空欄で拡張を解除します。';details.appendChild(hint);
+                const textarea=document.createElement('textarea');textarea.setAttribute('aria-label','挙動設定JSON');textarea.value=object.entity?JSON.stringify(object.entity,null,2):'';details.appendChild(textarea);
+                const apply=document.createElement('button');apply.type='button';apply.textContent='挙動設定を適用';apply.addEventListener('click',()=>{
+                    try{const entity=textarea.value.trim()?JSON.parse(textarea.value):null;
+                        if(this.applyEdit(object,{entity})){textarea.value=object.entity?JSON.stringify(object.entity,null,2):'';}}
+                    catch(error){this.app.notify('適用できませんでした。'+error.message,true);}
+                });details.appendChild(apply);form.appendChild(details);
             }
 
             addPropertyField(form, property, labelText, value, type, min = null, max = null, step = null) {
@@ -1458,7 +2272,8 @@ class TableArcade {
                 if (this.app.mode !== 'edit') return false;
                 try {
                     const data = LayoutCodec.object({ ...object.serialize(), ...changes });
-                    Object.assign(object, data);
+                    const records=this.objects.filter(o=>!o.isBoundary).map(o=>o===object?data:o.serialize());EntityModel.validateLayout(records);
+                    Object.assign(object, data, {entity:data.entity??null});
                     object.updateProperties();
                     this.updateObjectList();
                     this.app.notify('変更しました。保存ボタンで保存できます。');
@@ -1467,8 +2282,8 @@ class TableArcade {
             }
 
             getLayoutData() {
-                return { schemaVersion: 1, board: { ...this.board },
-                    objects: this.objects.filter(object => !object.isBoundary).map(object => object.serialize()) };
+                const objects=this.objects.filter(object=>!object.isBoundary).map(object=>object.serialize());
+                return { schemaVersion: objects.some(o=>o.entity||o.type==='device')?2:1,board:{...this.board},objects,...(this.seed!==undefined?{seed:this.seed}:{}) };
             }
 
             saveLayout() {
@@ -1516,7 +2331,7 @@ class TableArcade {
                 this.handlePointerUp();
                 this.selectedObject = null;
                 this.objects = staged;
-                this.board = { ...layout.board };
+                this.board = { ...layout.board };this.seed=layout.seed;
                 previous.forEach(object => object.destroy());
                 this.app.setBoard(this.board);
                 this.skin?.setBoard(this.board);
@@ -1544,7 +2359,7 @@ class TableArcade {
                 this.layoutData = LayoutCodec.normalize(data.layoutData);
                 this.board = { ...this.layoutData.board };
                 this.objects = [];
-                this.ball = null;
+                this.ball = null;this.balls=[];this.runtime=null;
                 this.score = 0;
                 this.isGameOver = false;
                 this.isPlaying = true;
@@ -1564,21 +2379,23 @@ class TableArcade {
                 this.app.setScore?.(0);
                 this.input.keyboard.enabled = true;
                 this.input.keyboard.resetKeys();
-                this.keys = this.input.keyboard.addKeys({ left: 'LEFT', right: 'RIGHT', z: 'Z', slash: 'FORWARD_SLASH' });
+                this.keys = this.input.keyboard.addKeys({ left: 'LEFT', right: 'RIGHT', z: 'Z', slash: 'FORWARD_SLASH', action:'E' });
                 this.matter.world.on('beforeupdate', this.beforePhysicsStep, this);
                 this.matter.world.on('collisionstart', this.handleCollision, this);
+                this.matter.world.on('afterupdate',this.afterPhysicsStep,this);
                 this.objects = createBoundaries(this, this.board);
                 let marker = null;
                 for (const record of this.layoutData.objects) {
                     if (record.type === 'ball') marker = record;
                     else this.objects.push(GameObject.deserialize(this, record));
                 }
-                if (this.table) for (const object of this.objects) {
-                    if (object.type !== 'flipper') object.gameObject.body.collisionFilter.category = 4;
+                for (const object of this.objects) {
+                    object.gameObject.body.collisionFilter.category = object.type==='flipper'?2:4;
                 }
                 this.ball = new Ball(this, marker?.x ?? this.board.width / 2, marker?.y ?? this.board.height / 3,
                     marker?.radius ?? 10, { ...(marker ?? {}), isBallPositionMarker: false });
-                this.objects.push(this.ball);
+                this.objects.push(this.ball);this.balls.push(this.ball);
+                this.runtime=new EntityRuntime(this);
                 this.spawn = { x: this.ball.x, y: this.ball.y };
                 this.bumperCount = this.objects.filter(o => o.type === 'bumper').length;
                 this.matter.world.resume();
@@ -1592,7 +2409,7 @@ class TableArcade {
             }
             prepareBall() {
                 this.waitingLaunch = true;
-                this.app.releaseControls?.();
+                this.app.releaseControls?.();this.runtime?.resetRound();
                 this.ball.setPosition(this.spawn.x, this.spawn.y);
                 this.ball.setVelocity(0, 0);
                 this.matter.body.setAngularVelocity(this.ball.gameObject.body, 0);
@@ -1615,19 +2432,16 @@ class TableArcade {
             }
             nudge() {
                 if (!this.table || this.isGameOver || this.waitingLaunch || this.app.mode !== 'play' || this.time.now < this.nextNudgeAt) return;
-                const ball = this.ball.gameObject, velocity = ball.body.velocity;
-                // Do not retrieve a ball once it has fallen below the flippers.
-                if (ball.y > 920) return;
-                this.ball.setVelocity(velocity.x + (ball.x < this.board.width / 2 ? 3 : -3), Math.min(velocity.y, 0) - 4);
+                const balls=this.runtime.liveBalls().filter(b=>!b.runtime.heldBy&&b.gameObject.y<=920);if(!balls.length)return;
+                for(const b of balls){const ball=b.gameObject,velocity=ball.body.velocity;b.setVelocity(velocity.x+(ball.x<this.board.width/2?3:-3),Math.min(velocity.y,0)-4);}
                 this.nextNudgeAt = this.time.now + 2000;
                 this.app.audio?.cue('wall-soft');
             }
-            beforePhysicsStep() {
-                if (this.isGameOver) return;
+            beforePhysicsStep(event={}) {
+                if (this.isGameOver||this.waitingLaunch) return;
+                this.runtime?.beforeStep(event.delta??this.matter.world.engine.timing.lastDelta??1000/60);
                 if (this.table && this.ball?.gameObject) {
-                    const velocity = this.ball.gameObject.body.velocity, speed = Math.hypot(velocity.x, velocity.y);
-                    // Authored tables have 24px rails. Bound displacement to avoid high-speed tunnelling.
-                    if (speed > 22) this.ball.setVelocity(velocity.x * 22 / speed, velocity.y * 22 / speed);
+                    for(const ball of this.runtime.liveBalls()){const velocity=ball.gameObject.body.velocity,speed=Math.hypot(velocity.x,velocity.y);if(speed>22)ball.setVelocity(velocity.x*22/speed,velocity.y*22/speed);}
                 }
                 const sounds = new Set();
                 for (const object of this.objects) {
@@ -1635,49 +2449,45 @@ class TableArcade {
                     const down = object.isLeft ? this.keys.left.isDown || this.keys.z.isDown || !!this.app.touch?.left.size :
                         this.keys.right.isDown || this.keys.slash.isDown || !!this.app.touch?.right.size;
                     if (down !== object.isFlipping) sounds.add(down ? 'flipper-up' : 'flipper-down');
-                    if (down) object.flip(); else object.reset();
+                    if(!this.runtime?.controlFlipper(object,down)){if (down) object.flip(); else object.reset();}
                     object.drive();
                 }
                 for (const sound of sounds) this.app.audio?.cue(sound);
             }
+            afterPhysicsStep(){this.runtime?.afterStep();}
             update() {
-                if (this.isGameOver || this.waitingLaunch) return;
-                if (this.ball?.gameObject?.y > this.board.height + this.ball.radius + 50) {
+                this.runtime?.draw();
+                if(this.isGameOver||this.waitingLaunch)return;
+                for(const ball of this.runtime.liveBalls())if(!ball.runtime.heldBy&&ball.gameObject.y>this.board.height+ball.radius+50)this.runtime.destroy(ball);
+                this.runtime.flush();
+                if(!this.runtime.liveBalls().length&&!this.runtime.hasPendingBalls()){
                     this.ballsLeft--;
-                    if (this.table && this.ballsLeft > 0) {
-                        this.app.audio?.cue('drain'); this.prepareBall();
-                    } else this.gameOver();
+                    if(this.table&&this.ballsLeft>0){this.app.audio?.cue('drain');this.prepareBall();}else this.gameOver();
                 }
+                if(this.table?.group==='lab'){
+                    const charged=this.objects.filter(o=>o.runtime?.active&&o.entity?.components?.charge).map(o=>Math.round(o.runtime.charge)).join(' / ');
+                    $('feature-progress').textContent=`プレイ中 ${this.runtime.liveBalls().length}球${charged?'　充填 '+charged:''}　${this.table.control??''}`;
+                }else $('feature-progress').textContent='';
             }
             handleCollision(event) {
-                if (this.isGameOver || this.waitingLaunch || !this.ball?.gameObject) return;
-                const seen = new Set();
-                for (const pair of event.pairs) {
-                    const { bodyA, bodyB } = pair;
-                    const ball = this.ball.gameObject;
-                    const other = bodyA.gameObject === ball ? bodyB : bodyB.gameObject === ball ? bodyA : null;
-                    const object = other?.gameObject?.userData;
-                    if (!object || seen.has(object)) continue;
-                    seen.add(object);
-                    if (object?.type === 'bumper') {
-                        this.addScore(object.score); object.flash();
-                        if (this.table) {
-                            this.hitBumpers.add(object);
-                            object.collected = true;
-                            if (!this.sweepAwarded && this.hitBumpers.size === this.bumperCount) {
-                                this.sweepAwarded = true; this.addScore(1000);
-                            }
-                            this.app.updateRound?.(this);
-                        }
+                if(this.isGameOver||this.waitingLaunch||!this.runtime)return;
+                const seen=new Set();
+                for(const pair of event.pairs){
+                    const a=pair.bodyA.gameObject?.userData,b=pair.bodyB.gameObject?.userData;if(!a||!b||!a.runtime?.active||!b.runtime?.active)continue;
+                    const key=[a.runtime.uid,b.runtime.uid].sort((x,y)=>x-y).join(':');if(seen.has(key))continue;seen.add(key);
+                    this.runtime.contact(a,b,pair);this.runtime.contact(b,a,pair);
+                    const balls=[a,b].filter(o=>o.type==='ball'&&!o.runtime.heldBy);
+                    if(!balls.length)continue;
+                    for(const ball of balls){const object=ball===a?b:a;
+                        if(object.type==='bumper'){
+                            this.addScore(object.score);object.flash();
+                            if(this.table){this.hitBumpers.add(object);object.collected=true;
+                                if(!this.sweepAwarded&&this.hitBumpers.size===this.bumperCount){this.sweepAwarded=true;this.addScore(1000);}this.app.updateRound?.(this);}
+                        }else if(object.type==='flipper'&&object.isFlipping)this.addScore(10);
                     }
-                    else if (object?.type === 'flipper' && object.isFlipping) this.addScore(10);
-                    if (object.type === 'bumper') this.app.audio?.cue('bumper');
-                    else {
-                        const v = ball.body.velocity, ov = other.velocity;
-                        this.app.audio?.cue(Math.hypot(v.x - ov.x, v.y - ov.y) >= 5 ? 'wall-hard' : 'wall-soft');
-                    }
-                    const point = pair.collision?.supports?.[0] ?? ball;
-                    this.skin?.hit(point.x, point.y);
+                    if(a.type==='bumper'||b.type==='bumper')this.app.audio?.cue('bumper');
+                    else {const av=pair.bodyA.velocity,bv=pair.bodyB.velocity;this.app.audio?.cue(Math.hypot(av.x-bv.x,av.y-bv.y)>=5?'wall-hard':'wall-soft');}
+                    const point=pair.collision?.supports?.[0]??balls[0].gameObject;this.skin?.hit(point.x,point.y);
                 }
             }
             addScore(points) {
@@ -1691,7 +2501,7 @@ class TableArcade {
             gameOver() {
                 if (this.isGameOver) return;
                 this.isGameOver = true;
-                this.ball?.setVelocity(0, 0);
+                for(const ball of this.balls)ball.setVelocity(0,0);this.runtime?.cancelInput();
                 this.matter.world.pause();
                 this.input.keyboard.resetKeys();
                 this.input.keyboard.enabled = false;
@@ -1703,8 +2513,9 @@ class TableArcade {
             shutdown() {
                 this.matter.world?.off('beforeupdate', this.beforePhysicsStep, this);
                 this.matter.world?.off('collisionstart', this.handleCollision, this);
+                this.matter.world?.off('afterupdate',this.afterPhysicsStep,this);this.runtime?.shutdown();this.runtime=null;
                 this.objects.forEach(object => object.destroy());
-                this.objects = []; this.ball = null; this.isPlaying = false;
+                this.objects = []; this.ball = null;this.balls=[]; this.isPlaying = false;
                 this.skin?.destroy(); this.skin = null;
                 this.app.audio?.stopAll();
             }
@@ -1714,3 +2525,4 @@ class TableArcade {
     </script>
 </body>
 </html>
+

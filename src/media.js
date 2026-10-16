@@ -182,7 +182,7 @@ class SceneSkin {
     }
     refresh(object) {
         const view = this.views.get(object); if (!view || !object.gameObject) return;
-        const signature = [object.type, object.width, object.height, object.color.toLowerCase(), object.isLeft].join(':');
+        const signature = [object.type, object.width, object.height, object.color.toLowerCase(), object.isLeft, JSON.stringify(object.entity)].join(':');
         if (signature !== view.signature) {
             view.container.removeAll(true); view.signature = signature; view.cap = view.glow = view.selection = null;
             view.skinned = this.build(object, view);
@@ -217,6 +217,15 @@ class SceneSkin {
             v.glow = add(this.image('bumper-glow', 0, 0, scale)).setVisible(false);
             v.cap = add(this.image('bumper-normal', 0, 0, scale)); return true;
         }
+        if(o.type==='device'){
+            const g=this.scene.add.graphics(),color=parseInt(o.color.slice(1),16);add(g);
+            g.fillStyle(0x102334,.94);g.lineStyle(3,color,.9);
+            if(o.radius!==undefined){g.fillCircle(0,0,o.radius);g.strokeCircle(0,0,o.radius);g.lineStyle(1,color,.45);g.strokeCircle(0,0,o.radius*.75);}
+            else{g.fillRect(-o.width/2,-o.height/2,o.width,o.height);g.strokeRect(-o.width/2,-o.height/2,o.width,o.height);}
+            const f=o.entity?.components?.field;
+            if(f){g.lineStyle(1,color,.25);g.strokeCircle(0,0,f.radius);const a=f.direction*Math.PI/180;g.lineStyle(3,color,.9);const x=Math.cos(a)*18,y=Math.sin(a)*18;g.lineBetween(-x,-y,x,y);g.lineBetween(x,y,x-Math.cos(a-.6)*10,y-Math.sin(a-.6)*10);g.lineBetween(x,y,x-Math.cos(a+.6)*10,y-Math.sin(a+.6)*10);}
+            return true;
+        }
         return false;
     }
     select(object, selected) {
@@ -224,7 +233,7 @@ class SceneSkin {
         const g = view.selection; g.clear();
         if (!selected || !view.skinned) return;
         g.lineStyle(2, 0xffff00, 1);
-        if (object.type === 'ball' || object.type === 'bumper') g.strokeCircle(0, 0, object.radius);
+        if (object.radius !== undefined) g.strokeCircle(0, 0, object.radius);
         else g.strokeRect(-object.width / 2, -object.height / 2, object.width, object.height);
     }
     flash(object) {
@@ -261,3 +270,4 @@ class SceneSkin {
         this.backdrop = this.frame = null;
     }
 }
+

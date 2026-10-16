@@ -8,11 +8,11 @@ function gameFor(a, table) {
     return g;
 }
 
-test('10台は異なる配置で、開始位置が物体に重ならず、プレビューと同じschema-1を使用する', () => {
+test('20台は異なる配置で、開始位置が物体に重ならず、旧10台はschema-1互換を保つ', () => {
     const a = loadApp();
-    assert.equal(a.PINBALL_TABLES.length, 10);
-    assert.equal(new Set(a.PINBALL_TABLES.map(t => t.id)).size, 10);
-    assert.equal(new Set(a.PINBALL_TABLES.map(t => JSON.stringify(t.layout.objects))).size, 10);
+    assert.equal(a.PINBALL_TABLES.length, 20);
+    assert.equal(new Set(a.PINBALL_TABLES.map(t => t.id)).size, 20);
+    assert.equal(new Set(a.PINBALL_TABLES.map(t => JSON.stringify(t.layout.objects))).size, 20);
     for (const table of a.PINBALL_TABLES) {
         const g = gameFor(a, table), ball = g.ball.gameObject.body;
         assert.equal(g.ballsLeft, 3); assert(g.waitingLaunch);
@@ -98,3 +98,4 @@ test('最高得点は台ごとに保存し、不正値・保存拒否でプレ�
     a.localStorage.setItem = () => { throw new Error('Storage unavailable'); };
     assert.doesNotThrow(() => scores.record(one, 2000)); assert.equal(scores.best(one.id), 2000); assert(scores.storageWarning);
 });
+

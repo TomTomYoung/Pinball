@@ -100,6 +100,18 @@ def ball_figure():
     return figure(s, "半透明の開始位置マーカーと動的な実ボール", "同じ球の素材を使用します。開始位置マーカーには当たり判定がありません。")
 
 
+def device_figure():
+    s = '<circle cx="135" cy="112" r="78" fill="#b793ff" fill-opacity=".08" stroke="#b793ff" stroke-opacity=".6"/>'
+    s += '<circle cx="135" cy="112" r="32" fill="#38294f" stroke="#b793ff" stroke-width="2"/>'
+    s += '<circle class="bounds" cx="135" cy="112" r="32"/>' + point(135,112)
+    s += text(135,220,'BODY + FIELD')
+    s += '<rect x="290" y="96" width="190" height="32" rx="0" fill="#5b3c28" stroke="#f3a476" stroke-width="2"/>'
+    s += '<rect class="bounds" x="290" y="96" width="190" height="32"/>' + point(385,112)
+    s += '<rect x="290" y="72" width="190" height="6" fill="#294054"/><rect x="290" y="72" width="120" height="6" fill="#f3a476"/>'
+    s += text(385,220,'BODY + HEALTH')
+    return figure(s,'仕掛けの物理形状と作用範囲・耐久表示','左は中心の物理円と外側の力場、右は矩形の物理形状と耐久バー。sensor=trueの形状は反射せず検知します。')
+
+
 def boundary_figure():
     s = '<g transform="translate(130 31) scale(.18)">'
     s += '<rect width="800" height="1000" fill="#101d2b" stroke="#394d64" stroke-width="4"/>'
@@ -185,8 +197,8 @@ def build():
     source = SOURCE.read_text(encoding="utf-8")
     pieces = source.split('\n## ')
     intro = pieces[0].split('\n', 1)[1]
-    diagrams = [rail_figure(), bumper_figure(), flipper_figure(), ball_figure(), boundary_figure(), decor_figure()]
-    labels = ['壁・レール', 'バンパー', '左右フリッパー', 'ボール開始位置', '実ボール・外周・落球', '装飾・演出・UI', 'スキン・座標・範囲', '10台の構成例', '正本と更新方法']
+    diagrams = [rail_figure(), bumper_figure(), flipper_figure(), ball_figure(), device_figure(), boundary_figure(), decor_figure()]
+    labels = ['壁・レール', 'バンパー', '左右フリッパー', 'ボール開始位置', '仕掛け・19プリセット', '実ボール・外周・落球', '装飾・演出・UI', 'スキン・座標・範囲', '20台の構成例', '正本と更新方法']
     sections, nav = [], []
     assert len(pieces)-1 == len(labels), 'Update navigation for new sections'
     for i, part in enumerate(pieces[1:], 1):
@@ -197,8 +209,8 @@ def build():
     page = ('<!doctype html><html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
             '<meta name="color-scheme" content="dark light"><title>Pinball オブジェクトカタログ</title><style>' + CSS + '</style></head><body id="top">'
             '<header class="hero"><div class="eyebrow">PINBALL / OBJECT CATALOG / 2026.10</div><h1>オブジェクトカタログ</h1>'
-            '<div class="intro">' + markdown(intro) + '</div><div class="stats"><span><b>04</b>配置できる型</span>'
-            '<span><b>10</b>完成台の構成例</span><span><b>49</b>既存の画像・音素材</span></div></header>'
+            '<div class="intro">' + markdown(intro) + '</div><div class="stats"><span><b>05</b>配置できる型</span>'
+            '<span><b>20</b>完成台の構成例</span><span><b>49</b>既存の画像・音素材</span></div></header>'
             '<div class="shell"><aside><p>CONTENTS</p><nav aria-label="カタログ目次">' + ''.join(nav) + '</nav>'
             '<div class="controls"><label><input id="show-bounds" type="checkbox" checked>当たり判定の線を表示</label>'
             '<span class="legend"><i>＋</i>保存する位置・支点</span></div></aside><main>' + ''.join(sections) + '</main></div>'

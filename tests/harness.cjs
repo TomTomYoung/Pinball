@@ -17,7 +17,7 @@ const World = req(31468), Factory = req(72653), EE = req(6659);
 function element() {
     return { style: {}, classList: { toggle() {} }, children: [], textContent: '', value: '',
         appendChild(child) { this.children.push(child); }, replaceChildren() { this.children = []; this.textContent = ''; },
-        addEventListener() {}, removeEventListener() {} };
+        addEventListener() {}, removeEventListener() {}, setAttribute() {} };
 }
 function loadApp() {
     const elements = new Map(), messages = [], storage = new Map();
@@ -28,7 +28,7 @@ function loadApp() {
     const html = fs.readFileSync(path.join(__dirname, '../index.html'), 'utf8');
     const script = html.split('<script>')[1].split('</script>')[0];
     vm.runInContext(script.slice(0, script.indexOf('const pinballGame = new PinballGame();')) +
-        '\nglobalThis.classes = { LayoutCodec, GameObject, Wall, Bumper, Flipper, Ball, EditorScene, GameScene, PinballGame, createBoundaries, PINBALL_TABLES, TableArcade };', context);
+        '\nglobalThis.classes = { LayoutCodec, GameObject, Wall, Bumper, Flipper, Ball, EditorScene, GameScene, PinballGame, createBoundaries, PINBALL_TABLES, PINBALL_LAB_TABLES, TableArcade, Device, EntityModel, EntityRuntime, ENTITY_PRESETS, entityPresetRecord };', context);
     const app = { mode: 'edit', board: { width: 800, height: 1000 },
         notify: (text, error) => messages.push({ text, error }),
         setBoard(board) { this.board = { ...board }; }, setMode(mode) { this.mode = mode; },
@@ -47,7 +47,7 @@ function scene(target = {}) {
     const world = new World(target, { gravity: { y: 1 }, debug: false });
     target.matter = { body: Body, world, add: new Factory(world) };
     target.input = { on() {}, off() {}, keyboard: { enabled: true, resetKeys() {},
-        addKeys: () => Object.fromEntries(['left', 'right', 'z', 'slash'].map(key => [key, { isDown: false }])) } };
+        addKeys: () => Object.fromEntries(['left', 'right', 'z', 'slash', 'action'].map(key => [key, { isDown: false }])) } };
     target.time = { delayedCall: () => ({ remove() {} }) };
     return target;
 }
@@ -55,3 +55,4 @@ function step(target, count = 60) {
     for (let i = 0; i < count; i++) target.matter.world.update(i * 1000 / 60, 1000 / 60);
 }
 module.exports = { loadApp, scene, step, Body, Engine, Composite };
+

@@ -115,6 +115,7 @@ class TableArcade {
     render() {
         const grid = $('table-grid'); grid.replaceChildren();
         PINBALL_TABLES.forEach((table, i) => {
+            if(this.filter==='lab'&&table.group!=='lab'||this.filter==='classic'&&table.group==='lab')return;
             const card = document.createElement('article'); card.className = 'table-card';
             card.style.setProperty('--table-accent', table.accent);
             card.innerHTML = `<div class="table-preview">${this.preview(table)}</div>
@@ -131,6 +132,7 @@ class TableArcade {
     preview(table) {
         const objects = LayoutCodec.normalize(table.layout).objects;
         const shapes = objects.map(o => {
+            if(o.type==='device'){const color=o.color;if(o.shape==='circle')return `<circle cx="${o.x}" cy="${o.y}" r="${o.radius}" fill="${color}" fill-opacity="${o.sensor?.3:.7}" stroke="${color}" stroke-width="5"/><text x="${o.x}" y="${o.y+9}" text-anchor="middle" fill="#fff" font-size="25">${o.entity?.prototype==='warp'?'W':o.entity?.prototype==='splitter'?'S':'+'}</text>`;return `<rect x="${o.x-o.width/2}" y="${o.y-o.height/2}" width="${o.width}" height="${o.height}" fill="${color}" transform="rotate(${o.angle} ${o.x} ${o.y})"/>`;}
             if (o.type === 'bumper') return `<circle cx="${o.x}" cy="${o.y}" r="${o.radius}" fill="${table.accent}" fill-opacity=".22" stroke="${table.accent}" stroke-width="8"/>`;
             if (o.type === 'ball') return `<circle cx="${o.x}" cy="${o.y}" r="12" fill="#fff"/>`;
             const x = o.type === 'flipper' ? (o.isLeft ? 0 : -o.width) : -o.width / 2;
@@ -139,3 +141,4 @@ class TableArcade {
         return `<svg viewBox="0 0 800 1000" aria-hidden="true" focusable="false"><path d="M12 990V12H788V990" fill="none" stroke="#40536b" stroke-width="18"/>${shapes}</svg>`;
     }
 }
+

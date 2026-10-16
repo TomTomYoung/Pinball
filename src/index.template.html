@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PINBALL ARCADE — 10の台とエディター</title>
+    <title>PINBALL ARCADE — 20の台とエディター</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/phaser/3.60.0/phaser.min.js"></script>
     <style>
         body {
@@ -139,6 +139,13 @@
         .audio-options input { display: block; width: 100%; accent-color: #00aaff; }
         #score-display { display: none; position: absolute; top: 8px; left: 8px; width: min(240px, 45%); aspect-ratio: 10 / 3; background-position: center; background-repeat: no-repeat; background-size: contain; z-index: 5; pointer-events: none; }
         #score-display span { position: absolute; inset: 26% 10% 10%; display: flex; align-items: center; font: clamp(14px, 2vw, 23px) monospace; color: #e3f4ff; }
+        .gallery-filters {display:flex;gap:8px;flex-wrap:wrap;max-width:1440px;margin:22px auto 0}
+        .gallery-filters button[aria-pressed="true"] {background:#74d8ff;color:#092036}
+        #feature-preset {margin:8px 0;width:100%}
+        .entity-settings {margin-top:16px;padding-top:12px;border-top:1px solid #637486}
+        .entity-settings textarea {display:block;width:100%;box-sizing:border-box;min-height:200px;background:#15212c;color:#e3f1ff;border:1px solid #68829c;font:12px/1.5 monospace;margin:10px 0;resize:vertical}
+        #feature-progress {color:#ffdc9b;line-height:1.6;max-width:80%;font-size:12px}
+        #play-controls button {min-width:0}
         [hidden] { display: none !important; }
         button:focus-visible { outline: 3px solid #7de5ff; outline-offset: 3px; }
         #table-gallery { position: fixed; inset: 0; z-index: 300; overflow: auto; padding: 36px clamp(16px, 4vw, 60px); box-sizing: border-box; background: radial-gradient(ellipse at 85% 0%, #16324a, transparent 60%), #0b1320; }
@@ -192,15 +199,16 @@
 </head>
 <body>
     <section id="table-gallery" aria-label="ピンボール台を選ぶ">
-        <header class="gallery-header"><div><div class="eyebrow">TEN TABLES / THREE BALLS</div>
-            <h1>PINBALL ARCADE</h1><p>10の台、10の跳ね方。好きな台から始めましょう。</p></div>
+        <header class="gallery-header"><div><div class="eyebrow">TWENTY TABLES / THREE BALLS</div>
+            <h1>PINBALL ARCADE</h1><p>定番10台と、仕掛けを試す10台。好きな台から始めましょう。</p></div>
             <button id="gallery-edit-button" disabled>エディターを開く</button></header>
+        <div class="gallery-filters" role="group" aria-label="台の分類"><button data-filter="all" aria-pressed="true">すべて 20</button><button data-filter="classic" aria-pressed="false">定番 10</button><button data-filter="lab" aria-pressed="false">新機能の試遊 10</button></div>
         <p id="gallery-note" role="status">読み込み中…</p><div id="table-grid"></div>
     </section>
     <div id="game-container">
         <div id="phaser-container">
             <div id="phaser-stage"><div id="score-display" aria-label="得点"><span id="current-score">Score: 0</span></div>
-                <div id="table-info" hidden><div id="table-name"></div><div id="round-progress"></div></div>
+                <div id="table-info" hidden><div id="table-name"></div><div id="round-progress"></div><div id="feature-progress"></div></div>
                 <div id="launch-prompt" hidden></div>
             </div>
             <div id="control-panel">
@@ -218,7 +226,7 @@
             </div>
             <div id="play-controls" hidden>
                 <button id="left-control" class="flipper-control" aria-label="左フリッパー">◀ 左</button>
-                <button id="launch-button">発射</button><button id="nudge-button">揺らす</button>
+                <button id="launch-button">発射</button><button id="action-control" hidden>特殊 E</button><button id="nudge-button">揺らす</button>
                 <button id="right-control" class="flipper-control" aria-label="右フリッパー">右 ▶</button>
             </div>
             <div id="game-over">
@@ -233,7 +241,7 @@
         </div>
         <div id="properties-panel">
             <section id="arcade-details" hidden><div class="eyebrow">TABLE GUIDE</div><h2 id="guide-name"></h2><p id="guide-description"></p><p id="guide-tip"></p>
-                <p>左：← / Z<br>右：→ / スラッシュ<br>発射：Space / Enter<br>揺らす：Q（2秒間隔）</p>
+                <p>左：← / Z<br>右：→ / スラッシュ<br>発射：Space / Enter<br>揺らす：Q（2秒間隔）<br>特殊／チャージ：E（対応する台）</p>
                 <p>画面下のボタンでも操作できます。<br>1ゲーム3球、全バンパーで +1,000点。</p></section>
             <div id="editor-controls">
             <h2>ピンボールエディター</h2>
@@ -246,6 +254,8 @@
                 <button id="add-bumper-button">バンパーを追加</button>
                 <button id="add-flipper-button">フリッパーを追加</button>
                 <button id="add-ball-button">ボール追加位置</button>
+                <label for="feature-preset">仕掛けプリセット</label><select id="feature-preset" class="property-input"></select>
+                <button id="add-feature-button">仕掛けを追加</button>
             </div>
             
             <div class="property-group object-list">
@@ -279,7 +289,10 @@
         const LEGACY_BACKUP_KEY = 'pinballLayoutLegacyBackup';
         const $ = id => document.getElementById(id);
 
+        /* PINBALL_ENTITY_MODEL */
+        /* PINBALL_ENTITY_RUNTIME */
         /* PINBALL_TABLES_RUNTIME */
+        /* PINBALL_LAB_TABLES */
 
         // 保存・UI・プレイ開始で共通の検証を通す。現在の盤面は検証後に置換する。
         class LayoutCodec {
@@ -306,11 +319,12 @@
             }
 
             static object(data) {
-                if (!data || typeof data !== 'object' || !['wall', 'bumper', 'flipper', 'ball'].includes(data.type)) {
+                if (!data || typeof data !== 'object' || !['wall', 'bumper', 'flipper', 'ball', 'device'].includes(data.type)) {
                     throw new Error('未対応のオブジェクトが含まれています。');
                 }
                 const defaults = {
                     wall: { color: '#888888', restitution: 0.7 },
+                    device: { color: '#72dcff', restitution: 0.8 },
                     bumper: { color: '#00aaff', restitution: 1.5 },
                     flipper: { color: '#ff0000', restitution: 0.8 },
                     ball: { color: '#ffffff', restitution: 0.8 }
@@ -329,6 +343,12 @@
                     name, color,
                     restitution: this.number(data.restitution, defaults.restitution, '反発係数', 0, 2)
                 };
+                if (data.type === 'device') {
+                    result.shape = EntityModel.choice(data.shape,'circle',['circle','rectangle'],'装置形状');
+                    result.sensor = EntityModel.bool(data.sensor,false,'接触領域');
+                    if(result.shape === 'circle') { result.radius=this.number(data.radius,result.width/2,'半径',.5,5000);result.width=result.height=result.radius*2; }
+                }
+                const entity=EntityModel.normalize(data.entity,data.type);if(entity)result.entity=entity;
                 if (data.type === 'wall') result.isStatic = this.boolean(data.isStatic, true, '固定状態');
                 if (data.type === 'bumper' || data.type === 'ball') {
                     result.radius = this.number(data.radius, result.width / 2, '半径', 0.5, 5000);
@@ -350,13 +370,15 @@
 
             static normalize(data, fallbackBoard = DEFAULT_BOARD) {
                 if (!data || typeof data !== 'object' || !Array.isArray(data.objects)) throw new Error('objects配列がありません。');
-                if (data.schemaVersion !== undefined && data.schemaVersion !== 1) throw new Error('未対応の保存バージョンです。');
+                if (data.schemaVersion !== undefined && ![1,2].includes(data.schemaVersion)) throw new Error('未対応の保存バージョンです。');
                 if (data.objects.length > 1000) throw new Error('オブジェクトは1000個までです。');
                 const objects = data.objects.map(item => this.object(item));
                 if (objects.filter(item => item.type === 'ball').length > 1) throw new Error('開始位置マーカーは1個にしてください。');
-                const board = data.schemaVersion === 1 ? data.board : fallbackBoard;
+                const board = data.schemaVersion !== undefined ? data.board : fallbackBoard;
                 if (!board) throw new Error('盤面サイズがありません。');
-                return { schemaVersion: 1, board: this.board(board), objects };
+                EntityModel.validateLayout(objects);
+                if(data.seed!==undefined&&!Number.isInteger(data.seed))throw new Error('seedは整数で指定してください。');
+                return { schemaVersion: objects.some(o=>o.entity||o.type==='device')?2:1, board: this.board(board), objects, ...(data.seed!==undefined?{seed:this.number(data.seed,12345,'seed',0,4294967295)}:{}) };
             }
 
             // 旧コードが先頭に自動生成した3壁だけを候補とする。削除は画面で選択してもらう。
@@ -381,6 +403,7 @@
                 this.activeTable = null;
                 this.arcade = new TableArcade(this);
                 this.touch = { left: new Set(), right: new Set() };
+                this.actionPointers = new Set();this.actionDown=false;
                 this.media = new PinballMedia(this);
                 this.audio = new PinballAudio(this.media, message => this.notify(message));
                 this.editor = new EditorScene(this);
@@ -406,7 +429,7 @@
                 if (typeof ResizeObserver !== 'undefined') {
                     this.resizeObserver = new ResizeObserver(() => {
                         this.fitToolbar();
-                        if (this.mode !== 'loading' && this.game?.canvas) this.game.scale.refresh();
+                        if (this.mode !== 'loading' && this.game?.canvas) { this.game.scale.getParentBounds(); this.game.scale.refresh(); }
                     });
                     this.resizeObserver.observe($('phaser-stage'));
                     this.resizeObserver.observe($('control-panel'));
@@ -432,6 +455,19 @@
                     this.startTable(PINBALL_TABLES[(index + 1) % PINBALL_TABLES.length].id);
                 });
                 $('launch-button').addEventListener('click', () => this.play.launchBall());
+                const actionButton=$('action-control');
+                actionButton.addEventListener('pointerdown',event=>{
+                    if(this.mode!=='play'||this.play.waitingLaunch)return;
+                    event.preventDefault();actionButton.setPointerCapture(event.pointerId);this.actionPointers.add(event.pointerId);this.actionDown=true;actionButton.classList.add('pressed');
+                });
+                for(const type of ['pointerup','pointercancel','lostpointercapture'])actionButton.addEventListener(type,event=>{
+                    const wasActive=this.actionPointers.has(event.pointerId);this.actionPointers.delete(event.pointerId);this.actionDown=this.actionPointers.size>0;
+                    if(type!=='pointerup'&&wasActive)this.play.runtime?.cancelInput();if(!this.actionDown)actionButton.classList.remove('pressed');
+                });
+                document.querySelectorAll('[data-filter]').forEach(button=>button.addEventListener('click',()=>{
+                    this.arcade.filter=button.dataset.filter;this.arcade.render();
+                    document.querySelectorAll('[data-filter]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));
+                }));
                 $('nudge-button').addEventListener('click', () => this.play.nudge());
                 for (const side of ['left', 'right']) {
                     const button = $(side + '-control');
@@ -441,7 +477,8 @@
                         this.touch[side].add(event.pointerId); button.classList.add('pressed');
                     });
                     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, event => {
-                        this.touch[side].delete(event.pointerId);
+                        const wasActive=this.touch[side].has(event.pointerId);this.touch[side].delete(event.pointerId);
+                        if(type!=='pointerup'&&wasActive)this.play.runtime?.cancelInput();
                         if (!this.touch[side].size) button.classList.remove('pressed');
                     });
                 }
@@ -502,7 +539,10 @@
                 $('restart-button').disabled = mode !== 'over';
                 $('score-display').style.display = playing ? 'block' : 'none';
                 $('table-info').hidden = !arcade;
-                $('play-controls').hidden = !arcade || mode === 'over';
+                $('play-controls').hidden = !playing || mode === 'over';
+                $('action-control').hidden = !this.play.layoutData?.objects.some(o=>o.entity);
+                $('launch-button').hidden = !arcade;
+                $('nudge-button').hidden = !arcade;
                 $('next-table-button').hidden = !arcade;
                 $('result-tables-button').hidden = !arcade;
                 $('tables-button').disabled = !editing && !playing;
@@ -514,6 +554,7 @@
             releaseControls() {
                 for (const side of ['left', 'right']) { this.touch[side].clear(); $(side + '-control').classList.remove('pressed'); }
                 this.play?.input?.keyboard?.resetKeys();
+                this.actionPointers?.clear();this.actionDown=false;$('action-control').classList.remove('pressed');this.play?.runtime?.cancelInput();
             }
 
             openGallery() {
@@ -633,12 +674,13 @@
                 this.restitution = options.restitution ?? 0.7;
                 this.color = options.color ?? '#888888';
                 this.isBoundary = options.isBoundary === true;
+                this.entity = options.entity ? EntityModel.clone(options.entity) : null;
                 this.gameObject = null;
                 this.bodySize = null;
                 // 派生クラスの全属性が確定してからcreateGameObjectを呼ぶ。
             }
 
-            bodyOptions() { return { isStatic: true, restitution: this.restitution }; }
+            bodyOptions() { return { isStatic: this.entity?.motion?.mode!=='force', restitution: this.restitution }; }
             shape() { return { type: 'rectangle', width: this.width, height: this.height }; }
             bodyPosition() { return { x: this.x, y: this.y }; }
             displayAngle() { return this.angle; }
@@ -665,7 +707,7 @@
             updateProperties() {
                 if (!this.gameObject) return;
                 const go = this.gameObject;
-                if (this.type === 'bumper' || this.type === 'ball') {
+                if (this.radius !== undefined) {
                     this.width = this.height = this.radius * 2;
                     if (go.radius !== this.radius) go.setRadius(this.radius);
                 } else if (go.width !== this.width || go.height !== this.height) {
@@ -697,7 +739,7 @@
                 const dx = x - position.x, dy = y - position.y;
                 const localX = dx * Math.cos(angle) - dy * Math.sin(angle);
                 const localY = dx * Math.sin(angle) + dy * Math.cos(angle);
-                if (this.type === 'ball' || this.type === 'bumper') return Math.hypot(localX, localY) <= this.radius;
+                if (this.radius !== undefined) return Math.hypot(localX, localY) <= this.radius;
                 return Math.abs(localX) <= this.width / 2 && Math.abs(localY) <= this.height / 2;
             }
 
@@ -714,7 +756,7 @@
             serialize() {
                 return {
                     type: this.type, x: this.x, y: this.y, width: this.width, height: this.height,
-                    angle: this.angle, name: this.name, restitution: this.restitution, color: this.color
+                    angle: this.angle, name: this.name, restitution: this.restitution, color: this.color, ...(this.entity?{entity:EntityModel.clone(this.entity)}:{})
                 };
             }
 
@@ -724,6 +766,7 @@
                     case 'bumper': return new Bumper(scene, data.x, data.y, data.radius * 2, data);
                     case 'flipper': return new Flipper(scene, data.x, data.y, data.width, data.height, data);
                     case 'ball': return new Ball(scene, data.x, data.y, data.radius, data);
+                    case 'device': return new Device(scene,data.x,data.y,data.width,data.height,data);
                     default: throw new Error(`未対応の種類: ${data.type}`);
                 }
             }
@@ -736,7 +779,7 @@
                 this.isStatic = options.isStatic ?? true;
                 this.createGameObject();
             }
-            bodyOptions() { return { isStatic: this.isStatic, restitution: this.restitution }; }
+            bodyOptions() { return { isStatic: this.entity?.motion?.mode==='force'?false:this.isStatic, restitution: this.restitution }; }
             serialize() { return { ...super.serialize(), isStatic: this.isStatic }; }
         }
 
@@ -818,8 +861,8 @@
                 body.force.y -= body.mass * gravity.y * gravityScale;
                 const target = (this.isFlipping ? this.flipAngle : this.restAngle) * Math.PI / 180;
                 const error = Math.atan2(Math.sin(target - body.angle), Math.cos(target - body.angle));
-                const maxSpeed = this.scene.table ? .35 : .25;
-                this.matter.body.setAngularVelocity(body, Math.max(-maxSpeed, Math.min(maxSpeed, error * (this.scene.table ? .6 : .45))));
+                const maxSpeed = (this.scene.table ? .35 : .25) * (this.driveMultiplier??1) * (this.scene.runtime?.modifier(this,'drive',1)??1);
+                this.matter.body.setAngularVelocity(body, Math.max(-maxSpeed, Math.min(maxSpeed, error * (this.scene.table ? .6 : .45) * (this.driveMultiplier??1))));
             }
             serialize() {
                 return { ...super.serialize(), isLeft: this.isLeft, restAngle: this.restAngle, flipAngle: this.flipAngle };
@@ -845,6 +888,19 @@
             serialize() {
                 return { ...super.serialize(), radius: this.radius, friction: this.friction, isBallPositionMarker: this.isBallPositionMarker };
             }
+        }
+
+        class Device extends GameObject {
+            constructor(scene,x,y,width,height,options={}) {
+                super(scene,x,y,width,height,options);this.type='device';this.deviceShape=options.shape??'circle';this.sensor=options.sensor??false;
+                if(this.deviceShape==='circle'){this.radius=options.radius??width/2;this.width=this.height=this.radius*2;}
+                this.createGameObject();
+            }
+            createGameObject(){this.gameObject=this.radius!==undefined?this.scene.add.circle(this.x,this.y,this.radius,0xffffff):this.scene.add.rectangle(this.x,this.y,this.width,this.height,0xffffff);this.finishCreation();}
+            shape(){return this.radius!==undefined?{type:'circle',radius:this.radius}:super.shape();}
+            bodyOptions(){return{isStatic:this.entity?.motion?.mode!=='force',isSensor:this.sensor,restitution:this.restitution};}
+            deviceLabel(){const p=this.entity?.prototype;return({accelerate:'BOOST',redirect:'TURN',brake:'SLOW',reflector:'REFLECT',magnet:'PULL',repeller:'PUSH',vortex:'VORTEX',capture:'HOLD',warp:'WARP',breakable:'BREAK',destroyer:'VOID',splitter:'SPLIT',absorber:'RECYCLE',launcher:'CHARGE',moving:'MOVE',rotating:'ROTATE'})[p]??'DEVICE';}
+            serialize(){return{...super.serialize(),shape:this.deviceShape,sensor:this.sensor,...(this.radius!==undefined?{radius:this.radius}:{})};}
         }
 
         function createBoundaries(scene, board) {
@@ -917,6 +973,21 @@
                     this.objects.push(object);
                     this.selectObject(object);
                 };
+                for(const [key,preset]of Object.entries(ENTITY_PRESETS)){const option=document.createElement('option');option.value=key;option.textContent=preset.name;$('feature-preset').appendChild(option);}
+                this.bind('add-feature-button','click',()=>{
+                    if(this.app.mode!=='edit')return;
+                    const key=$('feature-preset').value;
+                    const id=prefix=>{let n=1;while(this.objects.some(o=>o.entity?.id===prefix+n))n++;return prefix+n;};
+                    const records=[entityPresetRecord(key,320,330,id('feature-'))];
+                    if(key==='warp'){const exit=entityPresetRecord('warp',550,220,id('exit-'));records[0].entity.components.warp.target=exit.entity.id;exit.entity.components.warp.target=records[0].entity.id;records.push(exit);}
+                    if(key.endsWith('Flipper')){records[0].x=230;records[0].y=850;}
+                    const staged=[];
+                    try{
+                        const layout=LayoutCodec.normalize({...this.getLayoutData(),objects:[...this.getLayoutData().objects,...records]});
+                        for(const record of layout.objects.slice(-records.length))staged.push(GameObject.deserialize(this,record));
+                        this.objects.push(...staged);this.selectObject(staged[0]);this.app.notify('仕掛けを追加しました。設定欄で挙動を編集できます。');
+                    }catch(error){staged.forEach(o=>o.destroy());this.app.notify(error.message,true);}
+                });
                 this.bind('add-wall-button', 'click', () => add(() => new Wall(this, 200, 200, 100, 20)));
                 this.bind('add-bumper-button', 'click', () => add(() => new Bumper(this, 200, 200, 40)));
                 this.bind('add-flipper-button', 'click', () => add(() => new Flipper(this, 150, this.board.height - 100, 100, 20)));
@@ -996,13 +1067,13 @@
                 this.addPropertyField(form, 'name', '名前', object.name, 'text');
                 this.addPropertyField(form, 'x', object.type === 'flipper' ? '支点X' : 'X位置', object.x, 'number');
                 this.addPropertyField(form, 'y', object.type === 'flipper' ? '支点Y' : 'Y位置', object.y, 'number');
-                if (object.type === 'ball' || object.type === 'bumper') {
+                if (object.radius !== undefined) {
                     this.addPropertyField(form, 'radius', '半径', object.radius, 'number', 0.5, 5000, 0.5);
                 } else {
                     this.addPropertyField(form, 'width', '幅', object.width, 'number', 1, 10000);
                     this.addPropertyField(form, 'height', '高さ', object.height, 'number', 1, 10000);
                 }
-                if (object.type === 'wall') this.addPropertyField(form, 'angle', '角度', object.angle, 'number', -180, 180);
+                if (object.type === 'wall' || object.type === 'device') this.addPropertyField(form, 'angle', '角度', object.angle, 'number', -180, 180);
                 this.addPropertyField(form, 'restitution', '反発係数', object.restitution, 'number', 0, 2, 0.1);
                 this.addPropertyField(form, 'color', '色', object.color, 'color');
                 if (object.type === 'bumper') this.addPropertyField(form, 'score', 'スコア', object.score, 'number', 0, 1000000);
@@ -1028,6 +1099,15 @@
                     });
                     label.appendChild(select); form.appendChild(label);
                 }
+                const details=document.createElement('details');details.className='entity-settings';
+                const summary=document.createElement('summary');summary.textContent='挙動・条件の設定';details.appendChild(summary);
+                const hint=document.createElement('p');hint.className='help';hint.textContent='共通モデルのJSONです。適用時に検証します。空欄で拡張を解除します。';details.appendChild(hint);
+                const textarea=document.createElement('textarea');textarea.setAttribute('aria-label','挙動設定JSON');textarea.value=object.entity?JSON.stringify(object.entity,null,2):'';details.appendChild(textarea);
+                const apply=document.createElement('button');apply.type='button';apply.textContent='挙動設定を適用';apply.addEventListener('click',()=>{
+                    try{const entity=textarea.value.trim()?JSON.parse(textarea.value):null;
+                        if(this.applyEdit(object,{entity})){textarea.value=object.entity?JSON.stringify(object.entity,null,2):'';}}
+                    catch(error){this.app.notify('適用できませんでした。'+error.message,true);}
+                });details.appendChild(apply);form.appendChild(details);
             }
 
             addPropertyField(form, property, labelText, value, type, min = null, max = null, step = null) {
@@ -1054,7 +1134,8 @@
                 if (this.app.mode !== 'edit') return false;
                 try {
                     const data = LayoutCodec.object({ ...object.serialize(), ...changes });
-                    Object.assign(object, data);
+                    const records=this.objects.filter(o=>!o.isBoundary).map(o=>o===object?data:o.serialize());EntityModel.validateLayout(records);
+                    Object.assign(object, data, {entity:data.entity??null});
                     object.updateProperties();
                     this.updateObjectList();
                     this.app.notify('変更しました。保存ボタンで保存できます。');
@@ -1063,8 +1144,8 @@
             }
 
             getLayoutData() {
-                return { schemaVersion: 1, board: { ...this.board },
-                    objects: this.objects.filter(object => !object.isBoundary).map(object => object.serialize()) };
+                const objects=this.objects.filter(object=>!object.isBoundary).map(object=>object.serialize());
+                return { schemaVersion: objects.some(o=>o.entity||o.type==='device')?2:1,board:{...this.board},objects,...(this.seed!==undefined?{seed:this.seed}:{}) };
             }
 
             saveLayout() {
@@ -1112,7 +1193,7 @@
                 this.handlePointerUp();
                 this.selectedObject = null;
                 this.objects = staged;
-                this.board = { ...layout.board };
+                this.board = { ...layout.board };this.seed=layout.seed;
                 previous.forEach(object => object.destroy());
                 this.app.setBoard(this.board);
                 this.skin?.setBoard(this.board);
@@ -1140,7 +1221,7 @@
                 this.layoutData = LayoutCodec.normalize(data.layoutData);
                 this.board = { ...this.layoutData.board };
                 this.objects = [];
-                this.ball = null;
+                this.ball = null;this.balls=[];this.runtime=null;
                 this.score = 0;
                 this.isGameOver = false;
                 this.isPlaying = true;
@@ -1160,21 +1241,23 @@
                 this.app.setScore?.(0);
                 this.input.keyboard.enabled = true;
                 this.input.keyboard.resetKeys();
-                this.keys = this.input.keyboard.addKeys({ left: 'LEFT', right: 'RIGHT', z: 'Z', slash: 'FORWARD_SLASH' });
+                this.keys = this.input.keyboard.addKeys({ left: 'LEFT', right: 'RIGHT', z: 'Z', slash: 'FORWARD_SLASH', action:'E' });
                 this.matter.world.on('beforeupdate', this.beforePhysicsStep, this);
                 this.matter.world.on('collisionstart', this.handleCollision, this);
+                this.matter.world.on('afterupdate',this.afterPhysicsStep,this);
                 this.objects = createBoundaries(this, this.board);
                 let marker = null;
                 for (const record of this.layoutData.objects) {
                     if (record.type === 'ball') marker = record;
                     else this.objects.push(GameObject.deserialize(this, record));
                 }
-                if (this.table) for (const object of this.objects) {
-                    if (object.type !== 'flipper') object.gameObject.body.collisionFilter.category = 4;
+                for (const object of this.objects) {
+                    object.gameObject.body.collisionFilter.category = object.type==='flipper'?2:4;
                 }
                 this.ball = new Ball(this, marker?.x ?? this.board.width / 2, marker?.y ?? this.board.height / 3,
                     marker?.radius ?? 10, { ...(marker ?? {}), isBallPositionMarker: false });
-                this.objects.push(this.ball);
+                this.objects.push(this.ball);this.balls.push(this.ball);
+                this.runtime=new EntityRuntime(this);
                 this.spawn = { x: this.ball.x, y: this.ball.y };
                 this.bumperCount = this.objects.filter(o => o.type === 'bumper').length;
                 this.matter.world.resume();
@@ -1188,7 +1271,7 @@
             }
             prepareBall() {
                 this.waitingLaunch = true;
-                this.app.releaseControls?.();
+                this.app.releaseControls?.();this.runtime?.resetRound();
                 this.ball.setPosition(this.spawn.x, this.spawn.y);
                 this.ball.setVelocity(0, 0);
                 this.matter.body.setAngularVelocity(this.ball.gameObject.body, 0);
@@ -1211,19 +1294,16 @@
             }
             nudge() {
                 if (!this.table || this.isGameOver || this.waitingLaunch || this.app.mode !== 'play' || this.time.now < this.nextNudgeAt) return;
-                const ball = this.ball.gameObject, velocity = ball.body.velocity;
-                // Do not retrieve a ball once it has fallen below the flippers.
-                if (ball.y > 920) return;
-                this.ball.setVelocity(velocity.x + (ball.x < this.board.width / 2 ? 3 : -3), Math.min(velocity.y, 0) - 4);
+                const balls=this.runtime.liveBalls().filter(b=>!b.runtime.heldBy&&b.gameObject.y<=920);if(!balls.length)return;
+                for(const b of balls){const ball=b.gameObject,velocity=ball.body.velocity;b.setVelocity(velocity.x+(ball.x<this.board.width/2?3:-3),Math.min(velocity.y,0)-4);}
                 this.nextNudgeAt = this.time.now + 2000;
                 this.app.audio?.cue('wall-soft');
             }
-            beforePhysicsStep() {
-                if (this.isGameOver) return;
+            beforePhysicsStep(event={}) {
+                if (this.isGameOver||this.waitingLaunch) return;
+                this.runtime?.beforeStep(event.delta??this.matter.world.engine.timing.lastDelta??1000/60);
                 if (this.table && this.ball?.gameObject) {
-                    const velocity = this.ball.gameObject.body.velocity, speed = Math.hypot(velocity.x, velocity.y);
-                    // Authored tables have 24px rails. Bound displacement to avoid high-speed tunnelling.
-                    if (speed > 22) this.ball.setVelocity(velocity.x * 22 / speed, velocity.y * 22 / speed);
+                    for(const ball of this.runtime.liveBalls()){const velocity=ball.gameObject.body.velocity,speed=Math.hypot(velocity.x,velocity.y);if(speed>22)ball.setVelocity(velocity.x*22/speed,velocity.y*22/speed);}
                 }
                 const sounds = new Set();
                 for (const object of this.objects) {
@@ -1231,49 +1311,45 @@
                     const down = object.isLeft ? this.keys.left.isDown || this.keys.z.isDown || !!this.app.touch?.left.size :
                         this.keys.right.isDown || this.keys.slash.isDown || !!this.app.touch?.right.size;
                     if (down !== object.isFlipping) sounds.add(down ? 'flipper-up' : 'flipper-down');
-                    if (down) object.flip(); else object.reset();
+                    if(!this.runtime?.controlFlipper(object,down)){if (down) object.flip(); else object.reset();}
                     object.drive();
                 }
                 for (const sound of sounds) this.app.audio?.cue(sound);
             }
+            afterPhysicsStep(){this.runtime?.afterStep();}
             update() {
-                if (this.isGameOver || this.waitingLaunch) return;
-                if (this.ball?.gameObject?.y > this.board.height + this.ball.radius + 50) {
+                this.runtime?.draw();
+                if(this.isGameOver||this.waitingLaunch)return;
+                for(const ball of this.runtime.liveBalls())if(!ball.runtime.heldBy&&ball.gameObject.y>this.board.height+ball.radius+50)this.runtime.destroy(ball);
+                this.runtime.flush();
+                if(!this.runtime.liveBalls().length&&!this.runtime.hasPendingBalls()){
                     this.ballsLeft--;
-                    if (this.table && this.ballsLeft > 0) {
-                        this.app.audio?.cue('drain'); this.prepareBall();
-                    } else this.gameOver();
+                    if(this.table&&this.ballsLeft>0){this.app.audio?.cue('drain');this.prepareBall();}else this.gameOver();
                 }
+                if(this.table?.group==='lab'){
+                    const charged=this.objects.filter(o=>o.runtime?.active&&o.entity?.components?.charge).map(o=>Math.round(o.runtime.charge)).join(' / ');
+                    $('feature-progress').textContent=`プレイ中 ${this.runtime.liveBalls().length}球${charged?'　充填 '+charged:''}　${this.table.control??''}`;
+                }else $('feature-progress').textContent='';
             }
             handleCollision(event) {
-                if (this.isGameOver || this.waitingLaunch || !this.ball?.gameObject) return;
-                const seen = new Set();
-                for (const pair of event.pairs) {
-                    const { bodyA, bodyB } = pair;
-                    const ball = this.ball.gameObject;
-                    const other = bodyA.gameObject === ball ? bodyB : bodyB.gameObject === ball ? bodyA : null;
-                    const object = other?.gameObject?.userData;
-                    if (!object || seen.has(object)) continue;
-                    seen.add(object);
-                    if (object?.type === 'bumper') {
-                        this.addScore(object.score); object.flash();
-                        if (this.table) {
-                            this.hitBumpers.add(object);
-                            object.collected = true;
-                            if (!this.sweepAwarded && this.hitBumpers.size === this.bumperCount) {
-                                this.sweepAwarded = true; this.addScore(1000);
-                            }
-                            this.app.updateRound?.(this);
-                        }
+                if(this.isGameOver||this.waitingLaunch||!this.runtime)return;
+                const seen=new Set();
+                for(const pair of event.pairs){
+                    const a=pair.bodyA.gameObject?.userData,b=pair.bodyB.gameObject?.userData;if(!a||!b||!a.runtime?.active||!b.runtime?.active)continue;
+                    const key=[a.runtime.uid,b.runtime.uid].sort((x,y)=>x-y).join(':');if(seen.has(key))continue;seen.add(key);
+                    this.runtime.contact(a,b,pair);this.runtime.contact(b,a,pair);
+                    const balls=[a,b].filter(o=>o.type==='ball'&&!o.runtime.heldBy);
+                    if(!balls.length)continue;
+                    for(const ball of balls){const object=ball===a?b:a;
+                        if(object.type==='bumper'){
+                            this.addScore(object.score);object.flash();
+                            if(this.table){this.hitBumpers.add(object);object.collected=true;
+                                if(!this.sweepAwarded&&this.hitBumpers.size===this.bumperCount){this.sweepAwarded=true;this.addScore(1000);}this.app.updateRound?.(this);}
+                        }else if(object.type==='flipper'&&object.isFlipping)this.addScore(10);
                     }
-                    else if (object?.type === 'flipper' && object.isFlipping) this.addScore(10);
-                    if (object.type === 'bumper') this.app.audio?.cue('bumper');
-                    else {
-                        const v = ball.body.velocity, ov = other.velocity;
-                        this.app.audio?.cue(Math.hypot(v.x - ov.x, v.y - ov.y) >= 5 ? 'wall-hard' : 'wall-soft');
-                    }
-                    const point = pair.collision?.supports?.[0] ?? ball;
-                    this.skin?.hit(point.x, point.y);
+                    if(a.type==='bumper'||b.type==='bumper')this.app.audio?.cue('bumper');
+                    else {const av=pair.bodyA.velocity,bv=pair.bodyB.velocity;this.app.audio?.cue(Math.hypot(av.x-bv.x,av.y-bv.y)>=5?'wall-hard':'wall-soft');}
+                    const point=pair.collision?.supports?.[0]??balls[0].gameObject;this.skin?.hit(point.x,point.y);
                 }
             }
             addScore(points) {
@@ -1287,7 +1363,7 @@
             gameOver() {
                 if (this.isGameOver) return;
                 this.isGameOver = true;
-                this.ball?.setVelocity(0, 0);
+                for(const ball of this.balls)ball.setVelocity(0,0);this.runtime?.cancelInput();
                 this.matter.world.pause();
                 this.input.keyboard.resetKeys();
                 this.input.keyboard.enabled = false;
@@ -1299,8 +1375,9 @@
             shutdown() {
                 this.matter.world?.off('beforeupdate', this.beforePhysicsStep, this);
                 this.matter.world?.off('collisionstart', this.handleCollision, this);
+                this.matter.world?.off('afterupdate',this.afterPhysicsStep,this);this.runtime?.shutdown();this.runtime=null;
                 this.objects.forEach(object => object.destroy());
-                this.objects = []; this.ball = null; this.isPlaying = false;
+                this.objects = []; this.ball = null;this.balls=[]; this.isPlaying = false;
                 this.skin?.destroy(); this.skin = null;
                 this.app.audio?.stopAll();
             }
@@ -1310,3 +1387,4 @@
     </script>
 </body>
 </html>
+
